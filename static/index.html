@@ -35,7 +35,6 @@
             padding: 20px;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
             margin-bottom: 20px;
         }
 
@@ -143,7 +142,7 @@
             border-bottom: 1px solid #e6e6e6;
             display: flex;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 30px;
             justify-content: space-between;
         }
 
@@ -151,6 +150,7 @@
             flex-grow: 1;
             max-width: 500px;
             position: relative;
+            margin-right: 20px;
         }
 
         .search-container input {
@@ -160,6 +160,7 @@
             border: none;
             background-color: #f0f3f7;
             font-size: 14px;
+            height: 40px;
         }
 
         .search-icon {
@@ -168,6 +169,7 @@
             top: 50%;
             transform: translateY(-50%);
             color: #8895a7;
+            font-size: 16px;
         }
 
         .user-controls {
@@ -177,7 +179,7 @@
 
         .language-selector {
             margin-right: 15px;
-            padding: 8px 12px;
+            padding: 5px 12px;
             background-color: #f0f3f7;
             border-radius: 6px;
             cursor: pointer;
@@ -188,8 +190,9 @@
 
         .language-selector::after {
             content: "▼";
-            font-size: 10px;
+            font-size: 8px;
             margin-left: 5px;
+            color: #718096;
         }
 
         .user-avatar {
@@ -301,18 +304,108 @@
             border: 2px dashed #ffc107;
         }
 
-        .file-icon {
+        /* Estilos para las carpetas como en el mockup */
+        .file-icon.folder-icon {
             width: 100px;
             height: 70px;
-            margin-bottom: 15px;
+            background-color: #ffeaa7; /* Color amarillo claro */
+            border-radius: 8px;
+            position: relative;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
         }
 
-        .folder-icon {
-            color: #ffc107;
+        .file-icon.folder-icon::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 20px;
+            background-color: #fdcb6e; /* Color amarillo más oscuro para la pestaña */
+            border-radius: 8px 8px 0 0;
+        }
+
+        .file-icon.folder-icon i {
+            display: none; /* Ocultar el icono Font Awesome */
+        }
+
+        /* Estilo para documentos */
+        .file-icon.doc-icon {
+            width: 100px;
+            height: 70px;
+            background-color: #e2e8f0; /* Fondo gris claro */
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .file-icon.doc-icon::before {
+            content: "";
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            right: 20px;
+            height: 4px;
+            background-color: #a0aec0;
+            border-radius: 2px;
+        }
+
+        .file-icon.doc-icon::after {
+            content: "";
+            position: absolute;
+            top: 25px;
+            left: 20px;
+            right: 30px;
+            height: 4px;
+            background-color: #a0aec0;
+            border-radius: 2px;
+        }
+
+        /* Estilo para imágenes */
+        .file-icon.image-icon {
+            width: 100px;
+            height: 70px;
+            background-color: #74b9ff; /* Fondo azul claro */
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .file-icon.image-icon::before {
+            content: "";
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            width: 20px;
+            height: 20px;
+            background-color: #ffda79; /* Círculo amarillo como un sol */
+            border-radius: 50%;
+        }
+
+        /* Estilo para videos */
+        .file-icon.video-icon {
+            width: 100px;
+            height: 70px;
+            background-color: #111; /* Fondo negro */
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .file-icon.video-icon::before {
+            content: "";
+            width: 0;
+            height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-left: 20px solid white; /* Triángulo de reproducción */
         }
 
         .file-name {
@@ -532,6 +625,63 @@
             color: #718096;
         }
 
+        /* Compartir diálogo */
+        .share-dialog {
+            position: absolute;
+            top: 50%;
+            right: 50px;
+            width: 250px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            padding: 15px;
+        }
+
+        .share-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2d3748;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e0e6ed;
+        }
+
+        .share-user {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .user-avatar-small {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #dfe4ea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .user-name {
+            font-size: 13px;
+            color: #2d3748;
+        }
+
+        .add-user {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            margin-top: 10px;
+            background-color: #f0f3f7;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #718096;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -559,6 +709,7 @@
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    
     <!-- Internationalization scripts -->
     <script src="/js/i18n.js"></script>
     <script src="/js/languageSelector.js"></script>
@@ -630,7 +781,7 @@
             </div>
             
             <div class="user-controls">
-                <div id="language-selector" class="language-selector"></div>
+                <div id="language-selector" class="language-selector">ES</div>
                 <div class="user-avatar">MR</div>
             </div>
         </div>
@@ -702,54 +853,22 @@
             // Wait for i18n to initialize
             setTimeout(function() {
                 if (window.i18n) {
-                    // English
-                    if (!window.i18n.t('files.view_grid')) {
-                        // Add view_grid and view_list translations to existing English translations
-                        const enTranslations = {
-                            'files.view_grid': 'Grid view',
-                            'files.view_list': 'List view'
-                        };
-                        
-                        // Add them to the i18n system (if possible)
-                        for (const key in enTranslations) {
-                            // We're simulating adding translations to the cache
-                            // This is a workaround and might need adaptation for your actual i18n system
-                            const baseObj = window.i18n._getBaseObjectForKey ? 
-                                window.i18n._getBaseObjectForKey('en', key) : null;
-                            
-                            if (baseObj) {
-                                const lastKey = key.split('.').pop();
-                                baseObj[lastKey] = enTranslations[key];
-                            }
-                        }
-                    }
+                    // Add translations for view_grid and view_list if they're missing
+                    window.i18n.viewGridTranslation = {
+                        'en': 'Grid view',
+                        'es': 'Vista de cuadrícula'
+                    };
+                    window.i18n.viewListTranslation = {
+                        'en': 'List view',
+                        'es': 'Vista de lista'
+                    };
                     
-                    // Spanish
-                    if (!window.i18n.t('files.view_grid')) {
-                        // Add view_grid and view_list translations to existing Spanish translations
-                        const esTranslations = {
-                            'files.view_grid': 'Vista de cuadrícula',
-                            'files.view_list': 'Vista de lista'
-                        };
-                        
-                        // Add them to the i18n system (if possible)
-                        for (const key in esTranslations) {
-                            // We're simulating adding translations to the cache
-                            // This is a workaround and might need adaptation for your actual i18n system
-                            const baseObj = window.i18n._getBaseObjectForKey ? 
-                                window.i18n._getBaseObjectForKey('es', key) : null;
-                            
-                            if (baseObj) {
-                                const lastKey = key.split('.').pop();
-                                baseObj[lastKey] = esTranslations[key];
-                            }
-                        }
-                    }
+                    // Apply titles to buttons
+                    document.getElementById('grid-view-btn').title = 
+                        window.i18n.viewGridTranslation[window.i18n.getCurrentLocale()] || 'Grid view';
                     
-                    // Re-translate the page
-                    if (window.i18n.translatePage) {
-                        window.i18n.translatePage();
-                    }
+                    document.getElementById('list-view-btn').title = 
+                        window.i18n.viewListTranslation[window.i18n.getCurrentLocale()] || 'List view';
                 }
             }, 500);
         });
@@ -1535,9 +1654,50 @@
                         console.error('Error loading files:', error);
                         // File API may not be implemented yet, so we silently ignore this error
                     }
+
+                    // Actualizar los iconos de los archivos
+                    updateFileIcons();
                 } catch (error) {
                     console.error('Error loading files:', error);
                 }
+            }
+
+            /**
+             * Actualiza los iconos de archivos según su tipo
+             */
+            function updateFileIcons() {
+                // Buscar todos los elementos de archivo
+                const fileCards = document.querySelectorAll('.file-card');
+                
+                fileCards.forEach(card => {
+                    // Obtener el nombre del archivo si existe
+                    const fileName = card.querySelector('.file-name')?.textContent || '';
+                    
+                    // Obtener el icono existente
+                    const iconElement = card.querySelector('.file-icon');
+                    if (!iconElement) return;
+                    
+                    // Si ya tiene una clase específica, no hacer nada
+                    if (iconElement.classList.contains('folder-icon')) {
+                        // Es una carpeta, eliminar el icono de font-awesome
+                        iconElement.innerHTML = '';
+                    } 
+                    // Si es un documento
+                    else if (fileName.endsWith('.docx') || fileName.endsWith('.pdf') || fileName.endsWith('.txt') || fileName.endsWith('.xlsx')) {
+                        iconElement.classList.add('doc-icon');
+                        iconElement.innerHTML = ''; // Eliminar el icono de font-awesome
+                    }
+                    // Si es una imagen
+                    else if (fileName.endsWith('.jpg') || fileName.endsWith('.png') || fileName.endsWith('.gif') || fileName.endsWith('.jpeg')) {
+                        iconElement.classList.add('image-icon');
+                        iconElement.innerHTML = ''; // Eliminar el icono de font-awesome
+                    }
+                    // Si es un video
+                    else if (fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv')) {
+                        iconElement.classList.add('video-icon');
+                        iconElement.innerHTML = ''; // Eliminar el icono de font-awesome
+                    }
+                });
             }
 
             /**
@@ -1782,7 +1942,7 @@
                         <i class="${iconClass}"></i>
                     </div>
                     <div class="file-name">${file.name}</div>
-                    <div class="file-info">Modificado ${formattedDate}</div>
+                    <div class="file-info">Modificado ${formattedDate.split(' ')[0]}</div>
                 `;
 
                 // Atributos de datos para el archivo
