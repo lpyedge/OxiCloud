@@ -1,0 +1,70 @@
+{
+  "app": {
+    "title": "OxiCloud",
+    "description": "Minimalist cloud storage system"
+  },
+  "nav": {
+    "files": "Files",
+    "shared": "Shared",
+    "recent": "Recent",
+    "favorites": "Favorites",
+    "trash": "Trash"
+  },
+  "actions": {
+    "search": "Search files...",
+    "new_folder": "New folder",
+    "upload": "Upload",
+    "rename": "Rename",
+    "move": "Move to...",
+    "move_to": "Move to",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "files": {
+    "name": "Name",
+    "type": "Type",
+    "size": "Size",
+    "modified": "Modified",
+    "no_files": "No files in this folder",
+    "view_grid": "Grid view",
+    "view_list": "List view",
+    "file_types": {
+      "document": "Document",
+      "image": "Image",
+      "video": "Video",
+      "audio": "Audio",
+      "pdf": "PDF",
+      "text": "Text",
+      "folder": "Folder"
+    }
+  },
+  "dialogs": {
+    "rename_folder": "Rename folder",
+    "new_name": "New name",
+    "move_file": "Move file",
+    "select_destination": "Select destination folder",
+    "root": "Root",
+    "delete_confirmation": "Are you sure you want to delete",
+    "and_contents": "and all its contents",
+    "no_undo": "This action cannot be undone"
+  },
+  "dropzone": {
+    "drag_files": "Drag files here or click to select",
+    "drop_files": "Drop files to upload"
+  },
+  "errors": {
+    "file_not_found": "File not found",
+    "folder_not_found": "Folder not found",
+    "delete_error": "Error deleting",
+    "upload_error": "Error uploading file",
+    "rename_error": "Error renaming",
+    "move_error": "Error moving",
+    "empty_name": "Name cannot be empty",
+    "name_exists": "A file or folder with that name already exists",
+    "generic_error": "An error has occurred"
+  },
+  "breadcrumb": {
+    "home": "Home"
+  }
+}

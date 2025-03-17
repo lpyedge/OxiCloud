@@ -1,0 +1,11 @@
+{
+  "path_to_id": {
+    "prueba5/NIST.SP.500-322.pdf": "50d9675e-617f-472d-a6e7-cdcf83dfadfe",
+    "prueba3/NIST.SP.500-322.pdf": "a73a94bd-77e5-41ad-8723-9675fa15e66c",
+    "file_ids.json": "bda2a482-6947-4922-8263-a3826d13ab11",
+    "folder_ids.json": "dbd1c1e4-8441-40d6-8f43-e53a53abfde0",
+    "prueba4/folder_ids.json": "d4b559da-bf7e-4754-99bc-970f9c7a64fc",
+    "prueba3/NIST.SP.500-322 (3).pdf": "e71813d5-4234-4b0f-9c0a-55acb731ce7e",
+    "NIST.SP.500-322 (3).pdf": "95f7039e-06ff-41b7-87a0-2d7af6cbe4fb"
+  }
+}
