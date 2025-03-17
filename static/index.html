@@ -408,6 +408,110 @@
             border-left: 20px solid white; /* Triángulo de reproducción */
         }
 
+        /* Estilos para archivos de código */
+        .file-icon.code-icon {
+            width: 100px;
+            height: 70px;
+            background-color: #e2e8f0; /* Fondo gris claro */
+            border-radius: 4px;
+            position: relative;
+            margin-bottom: 10px;
+            border-top: 3px solid #556ee6; /* Borde superior azul */
+            overflow: hidden;
+        }
+
+        /* Líneas que simulan código */
+        .file-icon.code-icon::before,
+        .file-icon.code-icon::after {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            height: 2px;
+            background-color: #556ee6; /* Color azul para el código */
+        }
+
+        .file-icon.code-icon::before {
+            top: 15px;
+            width: 80%;
+        }
+
+        .file-icon.code-icon::after {
+            top: 25px;
+            width: 60%;
+        }
+
+        /* Agregar líneas adicionales para simular código */
+        .file-icon.code-icon .code-line-1,
+        .file-icon.code-icon .code-line-2,
+        .file-icon.code-icon .code-line-3 {
+            position: absolute;
+            left: 10px;
+            height: 2px;
+            background-color: #a0aec0; /* Color gris para el código */
+        }
+
+        .file-icon.code-icon .code-line-1 {
+            top: 35px;
+            width: 70%;
+        }
+
+        .file-icon.code-icon .code-line-2 {
+            top: 45px;
+            width: 85%;
+        }
+
+        .file-icon.code-icon .code-line-3 {
+            top: 55px;
+            width: 50%;
+        }
+
+        /* Colores específicos para distintos tipos de archivo de código */
+        .file-icon.json-icon {
+            border-top-color: #ffb86c; /* Naranja para JSON */
+        }
+
+        .file-icon.json-icon::before,
+        .file-icon.json-icon::after {
+            background-color: #ffb86c;
+        }
+
+        .file-icon.js-icon {
+            border-top-color: #ffd43b; /* Amarillo para JavaScript */
+        }
+
+        .file-icon.js-icon::before,
+        .file-icon.js-icon::after {
+            background-color: #ffd43b;
+        }
+
+        .file-icon.html-icon {
+            border-top-color: #e34c26; /* Rojo para HTML */
+        }
+
+        .file-icon.html-icon::before,
+        .file-icon.html-icon::after {
+            background-color: #e34c26;
+        }
+
+        .file-icon.css-icon {
+            border-top-color: #2965f1; /* Azul para CSS */
+        }
+
+        .file-icon.css-icon::before,
+        .file-icon.css-icon::after {
+            background-color: #2965f1;
+        }
+
+        .file-icon.py-icon {
+            border-top-color: #3776ab; /* Azul oscuro para Python */
+        }
+
+        .file-icon.py-icon::before,
+        .file-icon.py-icon::after {
+            background-color: #3776ab;
+        }
+
         .file-name {
             font-size: 14px;
             font-weight: 500;
@@ -1696,6 +1800,32 @@
                     else if (fileName.endsWith('.mp4') || fileName.endsWith('.avi') || fileName.endsWith('.mov') || fileName.endsWith('.mkv')) {
                         iconElement.classList.add('video-icon');
                         iconElement.innerHTML = ''; // Eliminar el icono de font-awesome
+                    }
+                    // Si es un archivo de código
+                    else {
+                        const extension = fileName.split('.').pop().toLowerCase();
+                        
+                        if (['json', 'js', 'jsx', 'ts', 'tsx', 'html', 'css', 'scss', 'py', 'java', 'c', 'cpp', 'cs', 'php', 'rb', 'go', 'rs', 'swift', 'kt'].includes(extension)) {
+                            iconElement.className = 'file-icon code-icon';
+                            iconElement.innerHTML = `
+                                <div class="code-line-1"></div>
+                                <div class="code-line-2"></div>
+                                <div class="code-line-3"></div>
+                            `;
+                            
+                            // Añadir clase específica según el tipo de archivo
+                            if (extension === 'json') {
+                                iconElement.classList.add('json-icon');
+                            } else if (['js', 'jsx', 'ts', 'tsx'].includes(extension)) {
+                                iconElement.classList.add('js-icon');
+                            } else if (extension === 'html') {
+                                iconElement.classList.add('html-icon');
+                            } else if (['css', 'scss'].includes(extension)) {
+                                iconElement.classList.add('css-icon');
+                            } else if (extension === 'py') {
+                                iconElement.classList.add('py-icon');
+                            }
+                        }
                     }
                 });
             }
