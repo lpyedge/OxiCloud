@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Query},
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -8,7 +8,9 @@ use axum::{
 
 use crate::application::services::folder_service::FolderService;
 use crate::application::dtos::folder_dto::{CreateFolderDto, RenameFolderDto, MoveFolderDto};
-use crate::domain::repositories::folder_repository::FolderRepositoryError;
+use crate::application::dtos::pagination::PaginationRequestDto;
+use crate::common::errors::ErrorKind;
+use crate::application::ports::inbound::FolderUseCase;
 
 type AppState = Arc<FolderService>;
 
@@ -24,9 +26,9 @@ impl FolderHandler {
         match service.create_folder(dto).await {
             Ok(folder) => (StatusCode::CREATED, Json(folder)).into_response(),
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::AlreadyExists(_) => StatusCode::CONFLICT,
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                let status = match err.kind {
+                    ErrorKind::AlreadyExists => StatusCode::CONFLICT,
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -43,8 +45,8 @@ impl FolderHandler {
         match service.get_folder(&id).await {
             Ok(folder) => (StatusCode::OK, Json(folder)).into_response(),
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -66,8 +68,32 @@ impl FolderHandler {
                 (StatusCode::OK, Json(folders)).into_response()
             },
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                };
+                
+                // Return a JSON error response
+                (status, Json(serde_json::json!({
+                    "error": err.to_string()
+                }))).into_response()
+            }
+        }
+    }
+    
+    /// Lists folders with pagination support
+    pub async fn list_folders_paginated(
+        State(service): State<AppState>,
+        Query(pagination): Query<PaginationRequestDto>,
+        parent_id: Option<&str>,
+    ) -> impl IntoResponse {
+        match service.list_folders_paginated(parent_id, &pagination).await {
+            Ok(paginated_result) => {
+                (StatusCode::OK, Json(paginated_result)).into_response()
+            },
+            Err(err) => {
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -88,9 +114,9 @@ impl FolderHandler {
         match service.rename_folder(&id, dto).await {
             Ok(folder) => (StatusCode::OK, Json(folder)).into_response(),
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
-                    FolderRepositoryError::AlreadyExists(_) => StatusCode::CONFLICT,
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                    ErrorKind::AlreadyExists => StatusCode::CONFLICT,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -111,9 +137,9 @@ impl FolderHandler {
         match service.move_folder(&id, dto).await {
             Ok(folder) => (StatusCode::OK, Json(folder)).into_response(),
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
-                    FolderRepositoryError::AlreadyExists(_) => StatusCode::CONFLICT,
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                    ErrorKind::AlreadyExists => StatusCode::CONFLICT,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -130,8 +156,8 @@ impl FolderHandler {
         match service.delete_folder(&id).await {
             Ok(_) => StatusCode::NO_CONTENT.into_response(),
             Err(err) => {
-                let status = match &err {
-                    FolderRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
