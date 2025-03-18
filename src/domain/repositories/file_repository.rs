@@ -1,6 +1,8 @@
-use std::path::PathBuf;
 use async_trait::async_trait;
 use crate::domain::entities::file::File;
+use crate::domain::services::path_service::StoragePath;
+use futures::Stream;
+use bytes::Bytes;
 
 /// Error types for file repository operations
 #[derive(Debug, thiserror::Error)]
@@ -18,6 +20,12 @@ pub enum FileRepositoryError {
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     
+    #[error("Mapping error: {0}")]
+    MappingError(String),
+    
+    #[error("Timeout error: {0}")]
+    Timeout(String),
+    
     #[error("Other error: {0}")]
     Other(String),
 }
@@ -26,11 +34,10 @@ pub enum FileRepositoryError {
 pub type FileRepositoryResult<T> = Result<T, FileRepositoryError>;
 
 /// Repository interface for file operations (primary port)
+/// Esta interfaz define las operaciones de negocio relacionadas con archivos
+/// sin exponer detalles de implementación como rutas o sistemas de archivos
 #[async_trait]
 pub trait FileRepository: Send + Sync + 'static {
-    /// Gets a folder by its ID - helper method for file repository to work with folders
-    #[allow(dead_code)]
-    async fn get_folder_by_id(&self, id: &str) -> FileRepositoryResult<crate::domain::entities::folder::Folder>;
     /// Saves a file from bytes
     async fn save_file_from_bytes(
         &self,
@@ -60,13 +67,20 @@ pub trait FileRepository: Send + Sync + 'static {
     /// Deletes a file
     async fn delete_file(&self, id: &str) -> FileRepositoryResult<()>;
     
-    /// Deletes a file and its entry from the map
+    /// Deletes a file and its entry from mapping systems
     #[allow(dead_code)]
     async fn delete_file_entry(&self, id: &str) -> FileRepositoryResult<()>;
     
-    /// Gets file content as bytes
+    /// Gets file content as bytes - use only for small files
     async fn get_file_content(&self, id: &str) -> FileRepositoryResult<Vec<u8>>;
     
-    /// Checks if a file exists at the given path
-    async fn file_exists(&self, path: &PathBuf) -> FileRepositoryResult<bool>;
+    /// Gets file content as a stream - better for large files
+    #[allow(clippy::type_complexity)]
+    async fn get_file_stream(&self, id: &str) -> FileRepositoryResult<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>>;
+    
+    /// Moves a file to a different folder
+    async fn move_file(&self, id: &str, target_folder_id: Option<String>) -> FileRepositoryResult<File>;
+    
+    /// Gets the storage path for a file
+    async fn get_file_path(&self, id: &str) -> FileRepositoryResult<StoragePath>;
 }

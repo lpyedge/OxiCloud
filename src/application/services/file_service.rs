@@ -1,16 +1,81 @@
 use std::sync::Arc;
+use thiserror::Error;
+use async_trait::async_trait;
 
-use crate::domain::repositories::file_repository::{FileRepository, FileRepositoryResult};
+use crate::domain::repositories::file_repository::FileRepositoryError;
 use crate::application::dtos::file_dto::FileDto;
+use crate::application::ports::inbound::FileUseCase;
+use crate::application::ports::outbound::FileStoragePort;
+use crate::common::errors::DomainError;
+use futures::Stream;
+use bytes::Bytes;
+
+/// Errores específicos del servicio de archivos
+#[derive(Debug, Error)]
+pub enum FileServiceError {
+    #[error("Archivo no encontrado: {0}")]
+    NotFound(String),
+    
+    #[error("Archivo ya existe: {0}")]
+    Conflict(String),
+    
+    #[error("Error de acceso al archivo: {0}")]
+    AccessError(String),
+    
+    #[error("Ruta de archivo inválida: {0}")]
+    InvalidPath(String),
+    
+    #[error("Error interno: {0}")]
+    InternalError(String),
+}
+
+impl From<FileRepositoryError> for FileServiceError {
+    fn from(err: FileRepositoryError) -> Self {
+        match err {
+            FileRepositoryError::NotFound(id) => FileServiceError::NotFound(id),
+            FileRepositoryError::AlreadyExists(path) => FileServiceError::Conflict(path),
+            FileRepositoryError::InvalidPath(path) => FileServiceError::InvalidPath(path),
+            FileRepositoryError::IoError(e) => FileServiceError::AccessError(e.to_string()),
+            FileRepositoryError::Timeout(msg) => FileServiceError::AccessError(format!("Operación expiró: {}", msg)),
+            _ => FileServiceError::InternalError(err.to_string()),
+        }
+    }
+}
+
+impl From<DomainError> for FileServiceError {
+    fn from(err: DomainError) -> Self {
+        match err.kind {
+            crate::common::errors::ErrorKind::NotFound => FileServiceError::NotFound(err.to_string()),
+            crate::common::errors::ErrorKind::AlreadyExists => FileServiceError::Conflict(err.to_string()),
+            crate::common::errors::ErrorKind::InvalidInput => FileServiceError::InvalidPath(err.to_string()),
+            crate::common::errors::ErrorKind::AccessDenied => FileServiceError::AccessError(err.to_string()),
+            _ => FileServiceError::InternalError(err.to_string()),
+        }
+    }
+}
+
+impl From<FileServiceError> for DomainError {
+    fn from(err: FileServiceError) -> Self {
+        match err {
+            FileServiceError::NotFound(id) => DomainError::not_found("File", id),
+            FileServiceError::Conflict(path) => DomainError::already_exists("File", path),
+            FileServiceError::InvalidPath(path) => DomainError::validation_error("File", format!("Invalid path: {}", path)),
+            FileServiceError::AccessError(msg) => DomainError::access_denied("File", msg),
+            FileServiceError::InternalError(msg) => DomainError::internal_error("File", msg),
+        }
+    }
+}
+
+pub type FileServiceResult<T> = Result<T, FileServiceError>;
 
 /// Service for file operations
 pub struct FileService {
-    file_repository: Arc<dyn FileRepository>,
+    file_repository: Arc<dyn FileStoragePort>,
 }
 
 impl FileService {
     /// Creates a new file service
-    pub fn new(file_repository: Arc<dyn FileRepository>) -> Self {
+    pub fn new(file_repository: Arc<dyn FileStoragePort>) -> Self {
         Self { file_repository }
     }
     
@@ -21,105 +86,103 @@ impl FileService {
         folder_id: Option<String>,
         content_type: String,
         content: Vec<u8>,
-    ) -> FileRepositoryResult<FileDto>
+    ) -> FileServiceResult<FileDto>
     {
-        let file = self.file_repository.save_file_from_bytes(name, folder_id, content_type, content).await?;
+        let file = self.file_repository.save_file(name, folder_id, content_type, content).await
+            .map_err(FileServiceError::from)?;
         Ok(FileDto::from(file))
     }
     
     /// Gets a file by ID
-    pub async fn get_file(&self, id: &str) -> FileRepositoryResult<FileDto> {
-        let file = self.file_repository.get_file_by_id(id).await?;
+    pub async fn get_file(&self, id: &str) -> FileServiceResult<FileDto> {
+        let file = self.file_repository.get_file(id).await
+            .map_err(FileServiceError::from)?;
         Ok(FileDto::from(file))
     }
     
     /// Lists files in a folder
-    pub async fn list_files(&self, folder_id: Option<&str>) -> FileRepositoryResult<Vec<FileDto>> {
-        let files = self.file_repository.list_files(folder_id).await?;
+    pub async fn list_files(&self, folder_id: Option<&str>) -> FileServiceResult<Vec<FileDto>> {
+        let files = self.file_repository.list_files(folder_id).await
+            .map_err(FileServiceError::from)?;
         Ok(files.into_iter().map(FileDto::from).collect())
     }
     
     /// Deletes a file
-    pub async fn delete_file(&self, id: &str) -> FileRepositoryResult<()> {
+    pub async fn delete_file(&self, id: &str) -> FileServiceResult<()> {
         self.file_repository.delete_file(id).await
+            .map_err(FileServiceError::from)
     }
     
-    /// Gets file content
-    pub async fn get_file_content(&self, id: &str) -> FileRepositoryResult<Vec<u8>> {
+    /// Gets file content as bytes - use for small files only
+    pub async fn get_file_content(&self, id: &str) -> FileServiceResult<Vec<u8>> {
         self.file_repository.get_file_content(id).await
+            .map_err(FileServiceError::from)
     }
     
-    /// Moves a file to a new folder implementing direct save with new location without deleting first
-    pub async fn move_file(&self, file_id: &str, folder_id: Option<String>) -> FileRepositoryResult<FileDto> {
-        // Get the current file complete info
-        let source_file = match self.file_repository.get_file_by_id(file_id).await {
-            Ok(f) => f,
-            Err(e) => {
-                tracing::error!("Error al obtener archivo (ID: {}): {}", file_id, e);
-                return Err(e);
-            }
-        };
+    /// Gets file content as stream - better for large files
+    pub async fn get_file_stream(&self, id: &str) -> FileServiceResult<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>> {
+        self.file_repository.get_file_stream(id).await
+            .map_err(FileServiceError::from)
+    }
+    
+    /// Moves a file to a new folder using filesystem operations directly
+    pub async fn move_file(&self, file_id: &str, folder_id: Option<String>) -> FileServiceResult<FileDto> {
+        tracing::info!("Moviendo archivo con ID: {} a carpeta: {:?}", file_id, folder_id);
         
-        tracing::info!("Moviendo archivo: {} (ID: {}) de carpeta: {:?} a carpeta: {:?}", 
-                      source_file.name, file_id, source_file.folder_id, folder_id);
-        
-        // Special handling for PDF files
-        let is_pdf = source_file.name.to_lowercase().ends_with(".pdf");
-        if is_pdf {
-            tracing::info!("Moviendo un archivo PDF: {}", source_file.name);
-        }
-        
-        // No hacer nada si ya estamos en la carpeta de destino
-        if source_file.folder_id == folder_id {
-            tracing::info!("El archivo ya está en la carpeta de destino, no es necesario moverlo");
-            return Ok(FileDto::from(source_file));
-        }
-        
-        // Step 1: Get file content
-        tracing::info!("Leyendo contenido del archivo: {}", source_file.name);
-        let content = match self.file_repository.get_file_content(file_id).await {
-            Ok(content) => {
-                tracing::info!("Contenido del archivo leído correctamente: {} bytes", content.len());
-                content
-            },
-            Err(e) => {
-                tracing::error!("Error al leer el contenido del archivo {}: {}", file_id, e);
-                return Err(e);
-            }
-        };
-        
-        // Step 2: Save the file to the new location with a new ID
-        tracing::info!("Guardando archivo en nueva ubicación: {} en carpeta: {:?}", source_file.name, folder_id);
-        let new_file = match self.file_repository.save_file_from_bytes(
-            source_file.name.clone(),
-            folder_id.clone(),
-            source_file.mime_type.clone(),
-            content
-        ).await {
-            Ok(file) => {
-                tracing::info!("Archivo guardado en nueva ubicación con ID: {}", file.id);
-                file
-            },
-            Err(e) => {
-                tracing::error!("Error al guardar archivo en nueva ubicación: {}", e);
-                return Err(e);
-            }
-        };
-        
-        // Step 3: Only after ensuring new file is saved, try to delete the old file
-        // If this fails, it's not critical - we already have the file in the new location
-        tracing::info!("Eliminando archivo original con ID: {}", file_id);
-        match self.file_repository.delete_file(file_id).await {
-            Ok(_) => tracing::info!("Archivo original eliminado correctamente"),
-            Err(e) => {
-                tracing::warn!("Error al eliminar archivo original (ID: {}): {} - archivo duplicado posible", file_id, e);
-                // Continue even if delete fails - at worst we'll have duplicate files
-            }
-        }
+        // Usar la implementación eficiente del repositorio que utiliza rename
+        let moved_file = self.file_repository.move_file(file_id, folder_id).await
+            .map_err(|e| {
+                tracing::error!("Error al mover archivo (ID: {}): {}", file_id, e);
+                FileServiceError::from(e)
+            })?;
         
         tracing::info!("Archivo movido exitosamente: {} (ID: {}) a carpeta: {:?}", 
-                       new_file.name, new_file.id, folder_id);
+                       moved_file.name(), moved_file.id(), moved_file.folder_id());
         
-        Ok(FileDto::from(new_file))
+        Ok(FileDto::from(moved_file))
+    }
+}
+
+#[async_trait]
+impl FileUseCase for FileService {
+    async fn upload_file(
+        &self,
+        name: String,
+        folder_id: Option<String>,
+        content_type: String,
+        content: Vec<u8>,
+    ) -> Result<FileDto, DomainError> {
+        FileService::upload_file_from_bytes(self, name, folder_id, content_type, content).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn get_file(&self, id: &str) -> Result<FileDto, DomainError> {
+        FileService::get_file(self, id).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn list_files(&self, folder_id: Option<&str>) -> Result<Vec<FileDto>, DomainError> {
+        FileService::list_files(self, folder_id).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn delete_file(&self, id: &str) -> Result<(), DomainError> {
+        FileService::delete_file(self, id).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn get_file_content(&self, id: &str) -> Result<Vec<u8>, DomainError> {
+        FileService::get_file_content(self, id).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn get_file_stream(&self, id: &str) -> Result<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>, DomainError> {
+        FileService::get_file_stream(self, id).await
+            .map_err(DomainError::from)
+    }
+    
+    async fn move_file(&self, file_id: &str, folder_id: Option<String>) -> Result<FileDto, DomainError> {
+        FileService::move_file(self, file_id, folder_id).await
+            .map_err(DomainError::from)
     }
 }

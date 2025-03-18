@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use async_trait::async_trait;
 use crate::domain::entities::folder::Folder;
+use crate::domain::services::path_service::StoragePath;
 
 /// Error types for folder repository operations
 #[derive(Debug, thiserror::Error)]
@@ -18,6 +18,12 @@ pub enum FolderRepositoryError {
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     
+    #[error("Mapping error: {0}")]
+    MappingError(String),
+    
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+    
     #[error("Other error: {0}")]
     Other(String),
 }
@@ -29,16 +35,30 @@ pub type FolderRepositoryResult<T> = Result<T, FolderRepositoryError>;
 #[async_trait]
 pub trait FolderRepository: Send + Sync + 'static {
     /// Creates a new folder
-    async fn create_folder(&self, name: String, parent_path: Option<PathBuf>) -> FolderRepositoryResult<Folder>;
+    async fn create_folder(&self, name: String, parent_id: Option<String>) -> FolderRepositoryResult<Folder>;
     
     /// Gets a folder by its ID
     async fn get_folder_by_id(&self, id: &str) -> FolderRepositoryResult<Folder>;
     
     /// Gets a folder by its path
-    async fn get_folder_by_path(&self, path: &PathBuf) -> FolderRepositoryResult<Folder>;
+    async fn get_folder_by_storage_path(&self, storage_path: &StoragePath) -> FolderRepositoryResult<Folder>;
     
-    /// Lists folders in a parent folder
+    /// Lists all folders in a parent folder (use with caution for large directories)
     async fn list_folders(&self, parent_id: Option<&str>) -> FolderRepositoryResult<Vec<Folder>>;
+    
+    /// Lists folders in a parent folder with pagination support
+    /// 
+    /// * `parent_id` - Optional parent folder ID
+    /// * `offset` - Number of folders to skip
+    /// * `limit` - Maximum number of folders to return
+    /// * `include_total` - If true, returns the total count of folders as well
+    async fn list_folders_paginated(
+        &self, 
+        parent_id: Option<&str>, 
+        offset: usize, 
+        limit: usize,
+        include_total: bool
+    ) -> FolderRepositoryResult<(Vec<Folder>, Option<usize>)>;
     
     /// Renames a folder
     async fn rename_folder(&self, id: &str, new_name: String) -> FolderRepositoryResult<Folder>;
@@ -50,5 +70,18 @@ pub trait FolderRepository: Send + Sync + 'static {
     async fn delete_folder(&self, id: &str) -> FolderRepositoryResult<()>;
     
     /// Checks if a folder exists at the given path
-    async fn folder_exists(&self, path: &PathBuf) -> FolderRepositoryResult<bool>;
+    async fn folder_exists_at_storage_path(&self, storage_path: &StoragePath) -> FolderRepositoryResult<bool>;
+    
+    /// Gets the storage path for a folder
+    async fn get_folder_storage_path(&self, id: &str) -> FolderRepositoryResult<StoragePath>;
+    
+    /// Legacy method - checks if a folder exists at the given PathBuf path
+    #[deprecated(note = "Use folder_exists_at_storage_path instead")]
+    #[allow(dead_code)]
+    async fn folder_exists(&self, path: &std::path::PathBuf) -> FolderRepositoryResult<bool>;
+    
+    /// Legacy method - gets a folder by its PathBuf path
+    #[deprecated(note = "Use get_folder_by_storage_path instead")]
+    #[allow(dead_code)]
+    async fn get_folder_by_path(&self, path: &std::path::PathBuf) -> FolderRepositoryResult<Folder>;
 }

@@ -1,19 +1,54 @@
 use std::sync::Arc;
 use axum::{
-    extract::{Path, State, Multipart},
-    http::{StatusCode, header},
+    extract::{Path, State, Multipart, Query},
+    http::{StatusCode, header, HeaderName, HeaderValue, Response},
     response::IntoResponse,
     Json,
 };
 use serde::Deserialize;
+use std::collections::HashMap;
+use futures::Stream;
+use std::task::{Context, Poll};
+use std::pin::Pin;
 
-use crate::application::services::file_service::FileService;
-use crate::domain::repositories::file_repository::FileRepositoryError;
+use crate::application::services::file_service::{FileService, FileServiceError};
+use crate::infrastructure::services::compression_service::{
+    CompressionService, GzipCompressionService, CompressionLevel
+};
 
 type AppState = Arc<FileService>;
 
 /// Handler for file-related API endpoints
 pub struct FileHandler;
+
+// Simpler approach to make streams Unpin - use Pin<Box<dyn Stream>> directly
+struct BoxedStream<T> {
+    inner: Pin<Box<dyn Stream<Item = T> + Send + 'static>>,
+}
+
+impl<T> Stream for BoxedStream<T> {
+    type Item = T;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // Accessing the field directly is safe because BoxedStream is not a structural pinning type
+        unsafe { self.get_unchecked_mut().inner.as_mut().poll_next(cx) }
+    }
+}
+
+// This is safe because BoxedStream's inner field is already Pin<Box<dyn Stream>>
+impl<T> Unpin for BoxedStream<T> {}
+
+impl<T> BoxedStream<T> {
+    #[allow(dead_code)]
+    fn new<S>(stream: S) -> Self
+    where
+        S: Stream<Item = T> + Send + 'static,
+    {
+        BoxedStream {
+            inner: Box::pin(stream),
+        }
+    }
+}
 
 impl FileHandler {
     /// Uploads a file
@@ -49,8 +84,8 @@ impl FileHandler {
                 Ok(file) => (StatusCode::CREATED, Json(file)).into_response(),
                 Err(err) => {
                     let status = match &err {
-                        FileRepositoryError::AlreadyExists(_) => StatusCode::CONFLICT,
-                        FileRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                        FileServiceError::Conflict(_) => StatusCode::CONFLICT,
+                        FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
                         _ => StatusCode::INTERNAL_SERVER_ERROR,
                     };
                     
@@ -66,28 +101,240 @@ impl FileHandler {
         }
     }
     
-    /// Downloads a file
+    /// Downloads a file with optional compression
     pub async fn download_file(
         State(service): State<AppState>,
         Path(id): Path<String>,
+        Query(params): Query<HashMap<String, String>>,
     ) -> impl IntoResponse {
-        // Get file info and content
-        let file_result = service.get_file(&id).await;
-        let content_result = service.get_file_content(&id).await;
+        // Initialize compression service
+        let compression_service = GzipCompressionService::new();
         
-        match (file_result, content_result) {
-            (Ok(file), Ok(content)) => {
-                // Create response with proper headers
-                let headers = [
-                    (header::CONTENT_TYPE, file.mime_type),
-                    (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", file.name)),
-                ];
+        // Check if compression is explicitly requested or rejected
+        let compression_param = params.get("compress").map(|v| v.as_str());
+        let force_compress = compression_param == Some("true") || compression_param == Some("1");
+        let force_no_compress = compression_param == Some("false") || compression_param == Some("0");
+        
+        // Determine compression level from query params
+        let compression_level = match params.get("compression_level").map(|v| v.as_str()) {
+            Some("none") => CompressionLevel::None,
+            Some("fast") => CompressionLevel::Fast,
+            Some("best") => CompressionLevel::Best,
+            _ => CompressionLevel::Default, // Default or unrecognized
+        };
+        
+        // Get file info first to check it exists and get metadata
+        match service.get_file(&id).await {
+            Ok(file) => {
+                // Determine if we should compress based on file type and size
+                let should_compress = if force_no_compress {
+                    false
+                } else if force_compress {
+                    true
+                } else {
+                    compression_service.should_compress(&file.mime_type, file.size)
+                };
                 
-                (StatusCode::OK, headers, content).into_response()
+                // Log compression decision for debugging
+                tracing::debug!(
+                    "Download file: name={}, size={}KB, mime={}, compress={}", 
+                    file.name, file.size / 1024, file.mime_type, should_compress
+                );
+                
+                // For large files, use streaming response with potential compression
+                if file.size > 10 * 1024 * 1024 { // 10MB threshold for streaming
+                    match service.get_file_content(&id).await {
+                        Ok(content) => {
+                            // Create base headers
+                            let mut headers = HashMap::new();
+                            headers.insert(
+                                header::CONTENT_DISPOSITION.to_string(), 
+                                format!("attachment; filename=\"{}\"", file.name)
+                            );
+                            
+                            if should_compress {
+                                // Add content-encoding header for compressed response
+                                headers.insert(header::CONTENT_ENCODING.to_string(), "gzip".to_string());
+                                headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                headers.insert(header::VARY.to_string(), "Accept-Encoding".to_string());
+                                
+                                // Compress the content
+                                match compression_service.compress_data(&content, compression_level).await {
+                                    Ok(compressed_content) => {
+                                        tracing::debug!(
+                                            "Compressed file: {} from {}KB to {}KB (ratio: {:.2})", 
+                                            file.name, 
+                                            content.len() / 1024, 
+                                            compressed_content.len() / 1024,
+                                            content.len() as f64 / compressed_content.len() as f64
+                                        );
+                                        
+                                        // Build a custom response with headers and body
+                                        let mut response = Response::builder()
+                                            .status(StatusCode::OK)
+                                            .body(axum::body::Body::from(compressed_content))
+                                            .unwrap();
+                                            
+                                        // Add headers to response
+                                        for (name, value) in headers {
+                                            response.headers_mut().insert(
+                                                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                                HeaderValue::from_str(&value).unwrap()
+                                            );
+                                        }
+                                        
+                                        response
+                                    },
+                                    Err(e) => {
+                                        tracing::warn!("Compression failed, sending uncompressed: {}", e);
+                                        // Fall back to uncompressed
+                                        headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                        
+                                        // Build a custom response with headers and body
+                                        let mut response = Response::builder()
+                                            .status(StatusCode::OK)
+                                            .body(axum::body::Body::from(content))
+                                            .unwrap();
+                                            
+                                        // Add headers to response
+                                        for (name, value) in headers {
+                                            response.headers_mut().insert(
+                                                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                                HeaderValue::from_str(&value).unwrap()
+                                            );
+                                        }
+                                        
+                                        response
+                                    }
+                                }
+                            } else {
+                                // No compression, return as-is
+                                headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                
+                                // Build a custom response with headers and body
+                                let mut response = Response::builder()
+                                    .status(StatusCode::OK)
+                                    .body(axum::body::Body::from(content))
+                                    .unwrap();
+                                    
+                                // Add headers to response
+                                for (name, value) in headers {
+                                    response.headers_mut().insert(
+                                        HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                        HeaderValue::from_str(&value).unwrap()
+                                    );
+                                }
+                                
+                                response
+                            }
+                        },
+                        Err(err) => {
+                            tracing::error!("Error getting file content: {}", err);
+                            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                                "error": format!("Error reading file: {}", err)
+                            }))).into_response()
+                        }
+                    }
+                } else {
+                    // For smaller files, load entirely but still potentially compress
+                    match service.get_file_content(&id).await {
+                        Ok(content) => {
+                            // Create base headers
+                            let mut headers = HashMap::new();
+                            headers.insert(
+                                header::CONTENT_DISPOSITION.to_string(), 
+                                format!("attachment; filename=\"{}\"", file.name)
+                            );
+                            
+                            if should_compress {
+                                // Add content-encoding header for compressed response
+                                headers.insert(header::CONTENT_ENCODING.to_string(), "gzip".to_string());
+                                headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                headers.insert(header::VARY.to_string(), "Accept-Encoding".to_string());
+                                
+                                // Compress the content
+                                match compression_service.compress_data(&content, compression_level).await {
+                                    Ok(compressed_content) => {
+                                        tracing::debug!(
+                                            "Compressed file: {} from {}KB to {}KB (ratio: {:.2})", 
+                                            file.name, 
+                                            content.len() / 1024, 
+                                            compressed_content.len() / 1024,
+                                            content.len() as f64 / compressed_content.len() as f64
+                                        );
+                                        
+                                        // Build a custom response with headers and body
+                                        let mut response = Response::builder()
+                                            .status(StatusCode::OK)
+                                            .body(axum::body::Body::from(compressed_content))
+                                            .unwrap();
+                                            
+                                        // Add headers to response
+                                        for (name, value) in headers {
+                                            response.headers_mut().insert(
+                                                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                                HeaderValue::from_str(&value).unwrap()
+                                            );
+                                        }
+                                        
+                                        response
+                                    },
+                                    Err(e) => {
+                                        tracing::warn!("Compression failed, sending uncompressed: {}", e);
+                                        // Fall back to uncompressed
+                                        headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                        
+                                        // Build a custom response with headers and body
+                                        let mut response = Response::builder()
+                                            .status(StatusCode::OK)
+                                            .body(axum::body::Body::from(content))
+                                            .unwrap();
+                                            
+                                        // Add headers to response
+                                        for (name, value) in headers {
+                                            response.headers_mut().insert(
+                                                HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                                HeaderValue::from_str(&value).unwrap()
+                                            );
+                                        }
+                                        
+                                        response
+                                    }
+                                }
+                            } else {
+                                // No compression, return as-is
+                                headers.insert(header::CONTENT_TYPE.to_string(), file.mime_type.clone());
+                                
+                                // Build a custom response with headers and body
+                                let mut response = Response::builder()
+                                    .status(StatusCode::OK)
+                                    .body(axum::body::Body::from(content))
+                                    .unwrap();
+                                    
+                                // Add headers to response
+                                for (name, value) in headers {
+                                    response.headers_mut().insert(
+                                        HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                                        HeaderValue::from_str(&value).unwrap()
+                                    );
+                                }
+                                
+                                response
+                            }
+                        },
+                        Err(err) => {
+                            tracing::error!("Error getting file content: {}", err);
+                            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+                                "error": format!("Error reading file: {}", err)
+                            }))).into_response()
+                        }
+                    }
+                }
             },
-            (Err(err), _) | (_, Err(err)) => {
+            Err(err) => {
                 let status = match &err {
-                    FileRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                    FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
+                    FileServiceError::AccessError(_) => StatusCode::SERVICE_UNAVAILABLE,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -110,7 +357,7 @@ impl FileHandler {
             },
             Err(err) => {
                 let status = match &err {
-                    FileRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                    FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -131,7 +378,7 @@ impl FileHandler {
             Ok(_) => StatusCode::NO_CONTENT.into_response(),
             Err(err) => {
                 let status = match &err {
-                    FileRepositoryError::NotFound(_) => StatusCode::NOT_FOUND,
+                    FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -169,11 +416,11 @@ impl FileHandler {
                     },
                     Err(err) => {
                         let status = match &err {
-                            FileRepositoryError::NotFound(_) => {
+                            FileServiceError::NotFound(_) => {
                                 tracing::error!("Error al mover archivo - no encontrado: {}", err);
                                 StatusCode::NOT_FOUND
                             },
-                            FileRepositoryError::AlreadyExists(_) => {
+                            FileServiceError::Conflict(_) => {
                                 tracing::error!("Error al mover archivo - ya existe: {}", err);
                                 StatusCode::CONFLICT
                             },
