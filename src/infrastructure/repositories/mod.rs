@@ -2,3 +2,14 @@ pub mod file_fs_repository;
 pub mod folder_fs_repository;
 pub mod parallel_file_processor;
 
+// Nuevos repositorios refactorizados
+pub mod file_metadata_manager;
+pub mod file_path_resolver;
+pub mod file_fs_read_repository;
+pub mod file_fs_write_repository;
+
+// Re-exportar para facilitar acceso
+pub use file_metadata_manager::FileMetadataManager;
+pub use file_path_resolver::FilePathResolver;
+pub use file_fs_read_repository::FileFsReadRepository;
+pub use file_fs_write_repository::FileFsWriteRepository;

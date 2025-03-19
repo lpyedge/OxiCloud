@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::RwLock;
 use async_trait::async_trait;
 use thiserror::Error;
 
@@ -97,9 +98,9 @@ pub trait StorageMediator: Send + Sync + 'static {
 
 /// Implementación concreta del mediador de almacenamiento
 pub struct FileSystemStorageMediator {
-    folder_repository: Arc<dyn FolderRepository>,
-    path_service: Arc<PathService>,
-    id_mapping: Arc<dyn IdMappingPort>,
+    pub folder_repository: Arc<dyn FolderRepository>,
+    pub path_service: Arc<PathService>,
+    pub id_mapping: Arc<dyn IdMappingPort>,
 }
 
 impl FileSystemStorageMediator {
@@ -110,6 +111,86 @@ impl FileSystemStorageMediator {
     /// Creates a stub implementation for initialization bootstrapping
     pub fn new_stub() -> StubStorageMediator {
         StubStorageMediator::new()
+    }
+    
+    /// Overload para implementar inicialización diferida con repository placeholder
+    pub fn new_with_lazy_folder(
+        folder_repository: Arc<RwLock<Option<Arc<dyn FolderRepository>>>>,
+        path_service: Arc<PathService>,
+        id_mapping: Arc<dyn IdMappingPort>
+    ) -> Self {
+        // Create temporary stub repository
+        let temp_repo = Arc::new(FolderRepositoryStub {});
+        
+        Self {
+            folder_repository: temp_repo, 
+            path_service,
+            id_mapping,
+        }
+    }
+}
+
+/// Stub repository for initialization
+#[derive(Debug)]
+pub struct FolderRepositoryStub {}
+
+#[async_trait]
+impl FolderRepository for FolderRepositoryStub {
+    async fn create_folder(&self, _name: String, _parent_id: Option<String>) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn get_folder_by_id(&self, _id: &str) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn get_folder_by_storage_path(&self, _storage_path: &StoragePath) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn list_folders(&self, _parent_id: Option<&str>) -> Result<Vec<Folder>, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn list_folders_paginated(
+        &self, 
+        _parent_id: Option<&str>, 
+        _offset: usize, 
+        _limit: usize,
+        _include_total: bool
+    ) -> Result<(Vec<Folder>, Option<usize>), FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn rename_folder(&self, _id: &str, _new_name: String) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn move_folder(&self, _id: &str, _new_parent_id: Option<&str>) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn delete_folder(&self, _id: &str) -> Result<(), FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
+    }
+    
+    async fn folder_exists_at_storage_path(&self, _storage_path: &StoragePath) -> Result<bool, FolderRepositoryError> {
+        Ok(false)
+    }
+    
+    async fn get_folder_storage_path(&self, _id: &str) -> Result<StoragePath, FolderRepositoryError> {
+        Ok(StoragePath::root())
+    }
+    
+    // Legacy methods
+    #[allow(deprecated)]
+    async fn folder_exists(&self, _path: &std::path::PathBuf) -> Result<bool, FolderRepositoryError> {
+        Ok(false)
+    }
+    
+    #[allow(deprecated)]
+    async fn get_folder_by_path(&self, _path: &std::path::PathBuf) -> Result<Folder, FolderRepositoryError> {
+        Err(FolderRepositoryError::Other("Stub repository".to_string()))
     }
 }
 

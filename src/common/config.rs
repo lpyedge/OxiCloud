@@ -1,5 +1,26 @@
 use std::time::Duration;
 
+/// Configuración de caché
+#[derive(Debug, Clone)]
+pub struct CacheConfig {
+    /// TTL para entradas de archivos en caché (ms)
+    pub file_ttl_ms: u64,
+    /// TTL para entradas de directorios en caché (ms)
+    pub directory_ttl_ms: u64,
+    /// Máximo número de entradas en caché
+    pub max_entries: usize,
+}
+
+impl Default for CacheConfig {
+    fn default() -> Self {
+        Self {
+            file_ttl_ms: 60_000,     // 1 minuto
+            directory_ttl_ms: 120_000, // 2 minutos
+            max_entries: 10_000,      // 10,000 entradas
+        }
+    }
+}
+
 /// Configuración de timeouts para diferentes operaciones
 #[derive(Debug, Clone)]
 pub struct TimeoutConfig {
@@ -160,6 +181,8 @@ impl Default for ConcurrencyConfig {
 /// Configuración global de la aplicación
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    /// Configuración de caché
+    pub cache: CacheConfig,
     /// Configuración de timeouts
     pub timeouts: TimeoutConfig,
     /// Configuración de recursos
@@ -171,6 +194,7 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            cache: CacheConfig::default(),
             timeouts: TimeoutConfig::default(),
             resources: ResourceConfig::default(),
             concurrency: ConcurrencyConfig::default(),
