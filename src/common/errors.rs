@@ -17,6 +17,8 @@ pub enum ErrorKind {
     Timeout,
     /// Error interno del sistema
     InternalError,
+    /// Funcionalidad no implementada
+    NotImplemented,
 }
 
 impl Display for ErrorKind {
@@ -28,6 +30,7 @@ impl Display for ErrorKind {
             ErrorKind::AccessDenied => write!(f, "Access Denied"),
             ErrorKind::Timeout => write!(f, "Timeout"),
             ErrorKind::InternalError => write!(f, "Internal Error"),
+            ErrorKind::NotImplemented => write!(f, "Not Implemented"),
         }
     }
 }
@@ -126,6 +129,17 @@ impl DomainError {
     pub fn validation_error<S: Into<String>>(entity_type: &'static str, message: S) -> Self {
         Self {
             kind: ErrorKind::InvalidInput,
+            entity_type,
+            entity_id: None,
+            message: message.into(),
+            source: None,
+        }
+    }
+    
+    /// Crea un error de funcionalidad no implementada
+    pub fn not_implemented<S: Into<String>>(entity_type: &'static str, message: S) -> Self {
+        Self {
+            kind: ErrorKind::NotImplemented,
             entity_type,
             entity_id: None,
             message: message.into(),

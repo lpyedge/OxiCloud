@@ -24,21 +24,74 @@ OxiCloud incorporates multiple advanced performance optimizations:
 - **Parallel File Processing**: Automatically splits large files into chunks for parallel processing
 - **Asynchronous I/O**: Built on Tokio for non-blocking operations
 - **Worker Pools**: Smart thread management for optimal resource utilization
+- **Timeout Management**: Strategic timeouts to prevent resource exhaustion
 
 ### Intelligent Caching
 - **File Metadata Cache**: Drastically reduces filesystem calls
 - **Smart Cache Invalidation**: Selectively invalidates cache entries
 - **Preloading**: Strategic preloading for frequently accessed directories
+- **TTL-Based Cache**: Time-based expiration for optimal memory usage
 
 ### I/O Optimization
-- **Buffer Pooling**: Reuses memory buffers to reduce GC pressure
+- **Buffer Pooling**: Reuses memory buffers to reduce allocation pressure
 - **Adaptive Streaming**: Adjusts chunk sizes based on file size
 - **Size-Based Processing**: Different strategies for small, medium, and large files
+- **Non-Blocking Filesystem Operations**: Prevents I/O bottlenecks
 
 ### Batch Processing
 - **ID Mapping Optimizer**: Groups mapping operations to reduce overhead
 - **Operation Batching**: Processes multiple file operations concurrently
 - **Debounced Saving**: Groups write operations for optimal I/O
+- **Parallel Directory Scanning**: Efficient directory traversal
+
+## 🧠 Advanced Technical Features
+
+### Clean Architecture Implementation
+- **Hexagonal/Ports and Adapters Pattern**: Clear separation between domain, application, and infrastructure
+- **Dependency Inversion**: Domain business rules are independent of external frameworks
+- **Explicit Dependency Injection**: Manual, type-safe DI without heavy frameworks
+
+### Advanced Error Handling
+- **Domain-Specific Error Types**: Granular error classification with context
+- **Error Propagation Chain**: Preserves context through abstraction layers
+- **Custom Error Context**: Enriches errors with additional information
+- **Source Tracking**: Errors maintain their original source for debugging
+
+### Robust Repository Pattern
+- **Persistence Abstraction**: Domain layer completely isolated from storage details
+- **Repository Interfaces**: Defined in domain layer and implemented in infrastructure
+- **Storage Mediator Pattern**: Coordinates interactions between repositories
+- **ID Mapping Service**: Decouples domain identifiers from filesystem paths
+
+### Transaction Management
+- **Atomic Operations**: Entity-level transaction support
+- **Pending Changes System**: Batches persistence operations for efficiency
+- **Rollback Capabilities**: Reverts state on failed operations
+- **Optimistic Concurrency**: Protects against concurrent modifications
+
+### Advanced File System Handling
+- **Parallel Processing for Large Files**: Chunked operations for efficient I/O
+- **Specialized Strategies**: Different handlers for various file sizes
+- **Timeout-Protected Operations**: Prevents hanging on problematic files
+- **Background Processing**: Heavy operations offloaded to background tasks
+
+### Memory Efficiency
+- **Buffer Pool Manager**: Reuses allocated memory to reduce fragmentation
+- **Streaming I/O**: Processing large files without loading entirely into memory
+- **Resource-Aware Processing**: Adapts resource usage based on file size
+- **Lazy Loading**: Loads data only when needed
+
+### Defensive Programming
+- **Extensive Input Validation**: Domain entities enforce business rules
+- **Immutable Data Structures**: Prevents unexpected state mutations
+- **Fail-Fast Operations**: Early validation to prevent cascading failures
+- **Extensive Logging**: Structured logs with contextual information
+
+### Service Layer Optimizations
+- **Application Services**: Orchestrate use cases with domain entities
+- **Transaction Coordination**: Ensures data consistency across operations
+- **Domain Service Specialization**: Services focused on specific domain concerns
+- **Cross-Cutting Concerns**: Separated into dedicated middleware components
 
 ## 📸 Screenshots
 
