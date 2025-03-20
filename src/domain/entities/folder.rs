@@ -44,6 +44,20 @@ pub struct Folder {
 
 // Ya no necesitamos este módulo, ahora usamos un String directamente
 
+impl Default for Folder {
+    fn default() -> Self {
+        Self {
+            id: "stub-id".to_string(),
+            name: "stub-folder".to_string(),
+            storage_path: StoragePath::from_string("/"),
+            path_string: "/".to_string(),
+            parent_id: None,
+            created_at: 0,
+            modified_at: 0,
+        }
+    }
+}
+
 impl Folder {
     /// Creates a new folder with validation
     pub fn new(

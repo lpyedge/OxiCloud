@@ -1,4 +1,6 @@
 use std::time::Duration;
+use std::path::PathBuf;
+use std::env;
 
 /// Configuración de caché
 #[derive(Debug, Clone)]
@@ -49,6 +51,21 @@ impl Default for TimeoutConfig {
 impl TimeoutConfig {
     /// Obtiene un Duration para operaciones de archivo
     pub fn file_timeout(&self) -> Duration {
+        Duration::from_millis(self.file_operation_ms)
+    }
+
+    /// Obtiene un Duration para operaciones de escritura de archivo
+    pub fn file_write_timeout(&self) -> Duration {
+        Duration::from_millis(self.file_operation_ms)
+    }
+
+    /// Obtiene un Duration para operaciones de lectura de archivo
+    pub fn file_read_timeout(&self) -> Duration {
+        Duration::from_millis(self.file_operation_ms)
+    }
+
+    /// Obtiene un Duration para operaciones de eliminación de archivo
+    pub fn file_delete_timeout(&self) -> Duration {
         Duration::from_millis(self.file_operation_ms)
     }
 
@@ -178,9 +195,81 @@ impl Default for ConcurrencyConfig {
     }
 }
 
+/// Configuración de base de datos
+#[derive(Debug, Clone)]
+pub struct DatabaseConfig {
+    pub connection_string: String,
+    pub max_connections: u32,
+    pub min_connections: u32,
+    pub connect_timeout_secs: u64,
+    pub idle_timeout_secs: u64,
+    pub max_lifetime_secs: u64,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+            connection_string: "postgres://postgres:postgres@localhost/oxicloud".to_string(),
+            max_connections: 20,
+            min_connections: 5,
+            connect_timeout_secs: 10,
+            idle_timeout_secs: 300,
+            max_lifetime_secs: 1800,
+        }
+    }
+}
+
+/// Configuración de autenticación
+#[derive(Debug, Clone)]
+pub struct AuthConfig {
+    pub jwt_secret: String,
+    pub access_token_expiry_secs: i64,
+    pub refresh_token_expiry_secs: i64,
+    pub hash_memory_cost: u32,
+    pub hash_time_cost: u32,
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            jwt_secret: "ox1cl0ud-sup3r-s3cr3t-k3y-f0r-t0k3n-s1gn1ng".to_string(),
+            access_token_expiry_secs: 3600, // 1 hora
+            refresh_token_expiry_secs: 2592000, // 30 días
+            hash_memory_cost: 65536, // 64MB
+            hash_time_cost: 3,
+        }
+    }
+}
+
+/// Configuración de funcionalidades (feature flags)
+#[derive(Debug, Clone)]
+pub struct FeaturesConfig {
+    pub enable_auth: bool,
+    pub enable_user_storage_quotas: bool,
+    pub enable_file_sharing: bool,
+}
+
+impl Default for FeaturesConfig {
+    fn default() -> Self {
+        Self {
+            enable_auth: false,
+            enable_user_storage_quotas: false,
+            enable_file_sharing: false,
+        }
+    }
+}
+
 /// Configuración global de la aplicación
 #[derive(Debug, Clone)]
 pub struct AppConfig {
+    /// Ruta del directorio de almacenamiento
+    pub storage_path: PathBuf,
+    /// Ruta del directorio de archivos estáticos
+    pub static_path: PathBuf,
+    /// Puerto del servidor
+    pub server_port: u16,
+    /// Host del servidor
+    pub server_host: String,
     /// Configuración de caché
     pub cache: CacheConfig,
     /// Configuración de timeouts
@@ -189,16 +278,122 @@ pub struct AppConfig {
     pub resources: ResourceConfig,
     /// Configuración de concurrencia
     pub concurrency: ConcurrencyConfig,
+    /// Configuración de base de datos
+    pub database: DatabaseConfig,
+    /// Configuración de autenticación
+    pub auth: AuthConfig,
+    /// Configuración de funcionalidades
+    pub features: FeaturesConfig,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
+            storage_path: PathBuf::from("./storage"),
+            static_path: PathBuf::from("./static"),
+            server_port: 8085,
+            server_host: "127.0.0.1".to_string(),
             cache: CacheConfig::default(),
             timeouts: TimeoutConfig::default(),
             resources: ResourceConfig::default(),
             concurrency: ConcurrencyConfig::default(),
+            database: DatabaseConfig::default(),
+            auth: AuthConfig::default(),
+            features: FeaturesConfig::default(),
         }
+    }
+}
+
+impl AppConfig {
+    pub fn from_env() -> Self {
+        let mut config = Self::default();
+        
+        // Usar variables de entorno para sobrescribir valores por defecto
+        if let Ok(storage_path) = env::var("OXICLOUD_STORAGE_PATH") {
+            config.storage_path = PathBuf::from(storage_path);
+        }
+            
+        if let Ok(static_path) = env::var("OXICLOUD_STATIC_PATH") {
+            config.static_path = PathBuf::from(static_path);
+        }
+            
+        if let Ok(server_port) = env::var("OXICLOUD_SERVER_PORT") {
+            if let Ok(port) = server_port.parse::<u16>() {
+                config.server_port = port;
+            }
+        }
+            
+        if let Ok(server_host) = env::var("OXICLOUD_SERVER_HOST") {
+            config.server_host = server_host;
+        }
+        
+        // Configuración de Database
+        if let Ok(connection_string) = env::var("OXICLOUD_DB_CONNECTION_STRING") {
+            config.database.connection_string = connection_string;
+        }
+            
+        if let Ok(max_connections) = env::var("OXICLOUD_DB_MAX_CONNECTIONS")
+            .map(|v| v.parse::<u32>()) {
+            if let Ok(val) = max_connections {
+                config.database.max_connections = val;
+            }
+        }
+            
+        if let Ok(min_connections) = env::var("OXICLOUD_DB_MIN_CONNECTIONS")
+            .map(|v| v.parse::<u32>()) {
+            if let Ok(val) = min_connections {
+                config.database.min_connections = val;
+            }
+        }
+        
+        // Configuración Auth
+        if let Ok(jwt_secret) = env::var("OXICLOUD_JWT_SECRET") {
+            config.auth.jwt_secret = jwt_secret;
+        }
+            
+        if let Ok(access_token_expiry) = env::var("OXICLOUD_ACCESS_TOKEN_EXPIRY_SECS")
+            .map(|v| v.parse::<i64>()) {
+            if let Ok(val) = access_token_expiry {
+                config.auth.access_token_expiry_secs = val;
+            }
+        }
+            
+        if let Ok(refresh_token_expiry) = env::var("OXICLOUD_REFRESH_TOKEN_EXPIRY_SECS")
+            .map(|v| v.parse::<i64>()) {
+            if let Ok(val) = refresh_token_expiry {
+                config.auth.refresh_token_expiry_secs = val;
+            }
+        }
+        
+        // Feature flags
+        if let Ok(enable_auth) = env::var("OXICLOUD_ENABLE_AUTH")
+            .map(|v| v.parse::<bool>()) {
+            if let Ok(val) = enable_auth {
+                config.features.enable_auth = val;
+            }
+        }
+        
+        if let Ok(enable_user_storage_quotas) = env::var("OXICLOUD_ENABLE_USER_STORAGE_QUOTAS")
+            .map(|v| v.parse::<bool>()) {
+            if let Ok(val) = enable_user_storage_quotas {
+                config.features.enable_user_storage_quotas = val;
+            }
+        }
+        
+        config
+    }
+    
+    pub fn with_features(mut self, features: FeaturesConfig) -> Self {
+        self.features = features;
+        self
+    }
+    
+    pub fn db_enabled(&self) -> bool {
+        self.features.enable_auth
+    }
+    
+    pub fn auth_enabled(&self) -> bool {
+        self.features.enable_auth
     }
 }
 

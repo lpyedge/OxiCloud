@@ -9,6 +9,8 @@ use futures::future::BoxFuture;
 use tracing::debug;
 use mime_guess::from_path;
 
+use crate::domain::entities::file::File;
+
 use crate::common::config::AppConfig;
 
 /// Tipos de entradas en caché
@@ -141,6 +143,34 @@ impl FileMetadataCache {
             popularity_threshold: 10, // Después de 10 accesos se considera popular
             max_entries,
         }
+    }
+    
+    /// Crea un objeto FileMetadata a partir de un objeto File
+    pub fn create_metadata_from_file(file: &File, abs_path: PathBuf) -> FileMetadata {
+        let entry_type = CacheEntryType::File;
+        let size = Some(file.size());
+        let mime_type = Some(file.mime_type().to_string());
+        let created_at = Some(file.created_at());
+        let modified_at = Some(file.modified_at());
+        
+        // Usar un TTL estándar
+        let ttl = Duration::from_secs(60); // 1 minuto
+        
+        FileMetadata::new(
+            abs_path,
+            true,
+            entry_type,
+            size,
+            mime_type,
+            created_at,
+            modified_at,
+            ttl,
+        )
+    }
+    
+    /// Crea una instancia por defecto
+    pub fn default() -> Self {
+        Self::new(AppConfig::default(), 10_000)
     }
     
     /// Crea una instancia de caché con configuración por defecto

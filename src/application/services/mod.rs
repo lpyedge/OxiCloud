@@ -9,6 +9,7 @@ pub mod file_upload_service;
 pub mod file_retrieval_service;
 pub mod file_management_service;
 pub mod file_use_case_factory;
+pub mod auth_application_service;
 
 // Re-exportar para facilitar acceso
 pub use file_upload_service::FileUploadService;

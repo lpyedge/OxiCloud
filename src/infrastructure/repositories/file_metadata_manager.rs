@@ -45,6 +45,14 @@ impl FileMetadataManager {
         }
     }
     
+    /// Crea un gestor por defecto para pruebas
+    pub fn default() -> Self {
+        Self {
+            metadata_cache: Arc::new(FileMetadataCache::default()),
+            config: AppConfig::default(),
+        }
+    }
+    
     /// Comprueba si un archivo existe en la ruta especificada con caché
     pub async fn file_exists(&self, abs_path: &PathBuf) -> Result<bool, MetadataError> {
         // Intentar obtener del caché avanzado primero
@@ -154,5 +162,19 @@ impl FileMetadataManager {
     /// Invalida la entrada de caché para un directorio y su contenido
     pub async fn invalidate_directory(&self, dir_path: &PathBuf) {
         self.metadata_cache.invalidate_directory(dir_path).await;
+    }
+    
+    /// Actualiza los metadatos de un archivo en la caché
+    pub async fn update_file_metadata(&self, file: &crate::domain::entities::file::File) -> Result<(), MetadataError> {
+        // Crear una ruta absoluta para el archivo
+        let abs_path = PathBuf::from(format!("{}/{}", self.config.storage_path.display(), file.storage_path().to_string()));
+        
+        // Crear un objeto FileMetadata
+        let metadata = FileMetadataCache::create_metadata_from_file(file, abs_path.clone());
+        
+        // Actualizar la caché
+        self.metadata_cache.update_cache(metadata).await;
+        
+        Ok(())
     }
 }

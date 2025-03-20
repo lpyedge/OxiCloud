@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app.title">OxiCloud - Login</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+    <!-- Scripts -->
+    <script src="/js/i18n.js"></script>
+    <script src="/js/auth.js" defer></script>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-panel" id="login-panel">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <svg viewBox="0 0 500 500">
+                        <path d="M345 310c32 0 58-26 58-58s-26-58-58-58c-6.2 0-12 0.9-17.5 2.7C318 166 289 143 255 143c-34.3 0-63.1 22.6-73 53.7C176.9 195.7 171 195 165 195c-32 0-58 26-58 58s26 58 58 58h180z" fill="#fff"/>
+                    </svg>
+                </div>
+                <div class="auth-logo-text">OxiCloud</div>
+            </div>
+            
+            <h2 class="auth-title" data-i18n="auth.login_title">Iniciar sesión</h2>
+            
+            <div class="auth-error" id="login-error"></div>
+            
+            <form class="auth-form" id="login-form">
+                <div class="auth-input-group">
+                    <label class="auth-label" for="login-username" data-i18n="auth.username">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="login-username" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.username_placeholder" 
+                        placeholder="Ingresa tu nombre de usuario"
+                        required
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="login-password" data-i18n="auth.password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="login-password" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.password_placeholder" 
+                        placeholder="Ingresa tu contraseña"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="auth-button" data-i18n="auth.login_button">Iniciar sesión</button>
+            </form>
+            
+            <div class="auth-toggle">
+                <span data-i18n="auth.no_account">¿No tienes cuenta?</span>
+                <span class="auth-toggle-link" id="show-register" data-i18n="auth.register">Regístrate</span>
+            </div>
+            
+            <div class="auth-toggle">
+                <span data-i18n="auth.admin_setup">¿Primera vez?</span>
+                <span class="auth-toggle-link" id="show-admin-setup" data-i18n="auth.setup">Configurar administrador</span>
+            </div>
+        </div>
+        
+        <div class="auth-panel" id="register-panel" style="display: none;">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <svg viewBox="0 0 500 500">
+                        <path d="M345 310c32 0 58-26 58-58s-26-58-58-58c-6.2 0-12 0.9-17.5 2.7C318 166 289 143 255 143c-34.3 0-63.1 22.6-73 53.7C176.9 195.7 171 195 165 195c-32 0-58 26-58 58s26 58 58 58h180z" fill="#fff"/>
+                    </svg>
+                </div>
+                <div class="auth-logo-text">OxiCloud</div>
+            </div>
+            
+            <h2 class="auth-title" data-i18n="auth.register_title">Crear cuenta</h2>
+            
+            <div class="auth-error" id="register-error"></div>
+            <div class="auth-success" id="register-success"></div>
+            
+            <form class="auth-form" id="register-form">
+                <div class="auth-input-group">
+                    <label class="auth-label" for="register-username" data-i18n="auth.username">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="register-username" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.username_placeholder" 
+                        placeholder="Ingresa un nombre de usuario"
+                        required
+                        minlength="3"
+                        maxlength="32"
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="register-email" data-i18n="auth.email">Email</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.email_placeholder" 
+                        placeholder="Ingresa tu email"
+                        required
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="register-password" data-i18n="auth.password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="register-password" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.password_placeholder" 
+                        placeholder="Ingresa una contraseña segura"
+                        required
+                        minlength="8"
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="register-password-confirm" data-i18n="auth.confirm_password">Confirmar contraseña</label>
+                    <input 
+                        type="password" 
+                        id="register-password-confirm" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.confirm_password_placeholder" 
+                        placeholder="Confirma tu contraseña"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="auth-button" data-i18n="auth.register_button">Crear cuenta</button>
+            </form>
+            
+            <div class="auth-toggle">
+                <span data-i18n="auth.have_account">¿Ya tienes cuenta?</span>
+                <span class="auth-toggle-link" id="show-login" data-i18n="auth.login">Iniciar sesión</span>
+            </div>
+        </div>
+        
+        <div class="auth-panel admin-setup-panel" id="admin-setup-panel">
+            <div class="auth-logo">
+                <div class="auth-logo-icon">
+                    <svg viewBox="0 0 500 500">
+                        <path d="M345 310c32 0 58-26 58-58s-26-58-58-58c-6.2 0-12 0.9-17.5 2.7C318 166 289 143 255 143c-34.3 0-63.1 22.6-73 53.7C176.9 195.7 171 195 165 195c-32 0-58 26-58 58s26 58 58 58h180z" fill="#fff"/>
+                    </svg>
+                </div>
+                <div class="auth-logo-text">OxiCloud</div>
+            </div>
+            
+            <h2 class="auth-title" data-i18n="auth.setup_title">Configuración inicial</h2>
+            
+            <div class="setup-steps">
+                <div class="setup-step">
+                    <div class="step-number active">1</div>
+                    <div class="step-title active" data-i18n="auth.setup_step1">Admin</div>
+                </div>
+                <div class="setup-step">
+                    <div class="step-number">2</div>
+                    <div class="step-title" data-i18n="auth.setup_step2">Sistema</div>
+                </div>
+                <div class="setup-step">
+                    <div class="step-number">3</div>
+                    <div class="step-title" data-i18n="auth.setup_step3">Completado</div>
+                </div>
+            </div>
+            
+            <div class="auth-error" id="admin-setup-error"></div>
+            
+            <form class="auth-form" id="admin-setup-form">
+                <div class="auth-input-group">
+                    <label class="auth-label" for="admin-username" data-i18n="auth.admin_username">Usuario administrador</label>
+                    <input 
+                        type="text" 
+                        id="admin-username" 
+                        class="auth-input" 
+                        value="admin"
+                        readonly
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="admin-email" data-i18n="auth.admin_email">Email administrador</label>
+                    <input 
+                        type="email" 
+                        id="admin-email" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.email_placeholder" 
+                        placeholder="Ingresa el email del administrador"
+                        required
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="admin-password" data-i18n="auth.admin_password">Contraseña administrador</label>
+                    <input 
+                        type="password" 
+                        id="admin-password" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.password_placeholder" 
+                        placeholder="Ingresa una contraseña segura"
+                        required
+                        minlength="8"
+                    >
+                </div>
+                
+                <div class="auth-input-group">
+                    <label class="auth-label" for="admin-password-confirm" data-i18n="auth.confirm_password">Confirmar contraseña</label>
+                    <input 
+                        type="password" 
+                        id="admin-password-confirm" 
+                        class="auth-input" 
+                        data-i18n-placeholder="auth.confirm_password_placeholder" 
+                        placeholder="Confirma la contraseña"
+                        required
+                    >
+                </div>
+                
+                <button type="submit" class="auth-button" data-i18n="auth.create_admin">Crear administrador</button>
+            </form>
+            
+            <div class="auth-toggle">
+                <span data-i18n="auth.back_to_login">¿Ya está configurado?</span>
+                <span class="auth-toggle-link" id="back-to-login" data-i18n="auth.login">Iniciar sesión</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use crate::domain::entities::file::File;
 use crate::domain::services::path_service::StoragePath;
+use crate::common::errors::DomainError;
 use futures::Stream;
 use bytes::Bytes;
 
@@ -23,8 +24,14 @@ pub enum FileRepositoryError {
     #[error("Mapping error: {0}")]
     MappingError(String),
     
+    #[error("ID Mapping error: {0}")]
+    IdMappingError(String),
+    
     #[error("Timeout error: {0}")]
     Timeout(String),
+    
+    #[error("Domain error: {0}")]
+    DomainError(#[from] DomainError),
     
     #[error("Other error: {0}")]
     Other(String),

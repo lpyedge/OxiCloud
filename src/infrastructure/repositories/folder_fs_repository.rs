@@ -10,6 +10,7 @@ use crate::domain::repositories::folder_repository::{
     FolderRepository, FolderRepositoryError, FolderRepositoryResult
 };
 use crate::domain::services::path_service::{StoragePath, PathService};
+use crate::application::ports::outbound::IdMappingPort;
 use crate::infrastructure::services::id_mapping_service::{IdMappingService, IdMappingError};
 use crate::application::services::storage_mediator::StorageMediator;
 use crate::application::ports::outbound::FolderStoragePort;
@@ -22,7 +23,7 @@ use tokio_stream;
 pub struct FolderFsRepository {
     root_path: PathBuf,
     storage_mediator: Arc<dyn StorageMediator>,
-    id_mapping_service: Arc<IdMappingService>,
+    id_mapping_service: Arc<dyn crate::application::ports::outbound::IdMappingPort>,
     path_service: Arc<PathService>,
 }
 
@@ -31,7 +32,7 @@ impl FolderFsRepository {
     pub fn new(
         root_path: PathBuf,
         storage_mediator: Arc<dyn StorageMediator>,
-        id_mapping_service: Arc<IdMappingService>,
+        id_mapping_service: Arc<dyn crate::application::ports::outbound::IdMappingPort>,
         path_service: Arc<PathService>,
     ) -> Self {
         Self { 
@@ -221,6 +222,7 @@ impl From<FolderRepositoryError> for DomainError {
             FolderRepositoryError::Other(msg) => {
                 DomainError::internal_error("Folder", msg)
             },
+            FolderRepositoryError::DomainError(e) => e,
         }
     }
 }
@@ -338,7 +340,7 @@ impl FolderRepository for FolderFsRepository {
         ).await?;
         
         // Ensure ID mapping is persisted
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         tracing::debug!("Created folder with ID: {}", folder.id());
         Ok(folder)
@@ -440,7 +442,7 @@ impl FolderRepository for FolderFsRepository {
         ).await?;
         
         // Ensure ID mapping is persisted
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         Ok(folder)
     }
@@ -550,7 +552,7 @@ impl FolderRepository for FolderFsRepository {
         }
         
         // Persist any new ID mappings that were created
-        if let Err(e) = self.id_mapping_service.save_pending_changes().await {
+        if let Err(e) = self.id_mapping_service.save_changes().await {
             tracing::error!("Failed to save ID mappings: {}", e);
         }
         
@@ -703,7 +705,7 @@ impl FolderRepository for FolderFsRepository {
         
         // Save ID mappings
         if !folders.is_empty() {
-            if let Err(e) = self.id_mapping_service.save_pending_changes().await {
+            if let Err(e) = self.id_mapping_service.save_changes().await {
                 tracing::error!("Error saving ID mappings: {}", e);
             }
         }
@@ -739,7 +741,7 @@ impl FolderRepository for FolderFsRepository {
             .map_err(FolderRepositoryError::from)?;
         
         // Save the updated mappings
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         tracing::debug!("Folder renamed successfully: ID={}, New name={}", id, renamed_folder.name());
         Ok(renamed_folder)
@@ -804,7 +806,7 @@ impl FolderRepository for FolderFsRepository {
             .map_err(FolderRepositoryError::from)?;
         
         // Save the updated mappings
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         tracing::debug!("Folder moved successfully: ID={}, New path={:?}", id, moved_folder.storage_path().to_string());
         Ok(moved_folder)
@@ -927,7 +929,7 @@ impl FolderRepository for FolderFsRepository {
         }
         
         // Save the updated mappings (asíncrono, no esperamos)
-        let _ = self.id_mapping_service.save_pending_changes().await;
+        let _ = self.id_mapping_service.save_changes().await;
         
         tracing::info!("Folder deleted successfully: ID={}, Name={}", id, folder_name);
         Ok(())

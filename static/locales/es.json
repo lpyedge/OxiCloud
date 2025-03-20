@@ -66,5 +66,34 @@
   },
   "breadcrumb": {
     "home": "Inicio"
+  },
+  "auth": {
+    "login_title": "Iniciar sesión",
+    "username": "Usuario",
+    "username_placeholder": "Ingresa tu nombre de usuario",
+    "password": "Contraseña",
+    "password_placeholder": "Ingresa tu contraseña",
+    "login_button": "Iniciar sesión",
+    "no_account": "¿No tienes cuenta?",
+    "register": "Regístrate",
+    "admin_setup": "¿Primera vez?",
+    "setup": "Configurar administrador",
+    "register_title": "Crear cuenta",
+    "email": "Email",
+    "email_placeholder": "Ingresa tu email",
+    "confirm_password": "Confirmar contraseña",
+    "confirm_password_placeholder": "Confirma tu contraseña",
+    "register_button": "Crear cuenta",
+    "have_account": "¿Ya tienes cuenta?",
+    "login": "Iniciar sesión",
+    "setup_title": "Configuración inicial",
+    "setup_step1": "Admin",
+    "setup_step2": "Sistema",
+    "setup_step3": "Completado",
+    "admin_username": "Usuario administrador",
+    "admin_email": "Email administrador",
+    "admin_password": "Contraseña administrador",
+    "create_admin": "Crear administrador",
+    "back_to_login": "¿Ya está configurado?"
   }
 }

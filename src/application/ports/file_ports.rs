@@ -46,7 +46,7 @@ pub trait FileManagementUseCase: Send + Sync + 'static {
 }
 
 /// Factory para crear implementaciones de casos de uso de archivos
-pub trait FileUseCaseFactory {
+pub trait FileUseCaseFactory: Send + Sync + 'static {
     fn create_file_upload_use_case(&self) -> Arc<dyn FileUploadUseCase>;
     fn create_file_retrieval_use_case(&self) -> Arc<dyn FileRetrievalUseCase>;
     fn create_file_management_use_case(&self) -> Arc<dyn FileManagementUseCase>;

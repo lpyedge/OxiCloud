@@ -43,6 +43,9 @@ function initApp() {
     } else {
         console.log('Using standard file rendering');
     }
+    
+    // Check authentication
+    checkAuthentication();
 }
 
 /**
@@ -58,6 +61,7 @@ function cacheElements() {
     elements.gridViewBtn = document.getElementById('grid-view-btn');
     elements.listViewBtn = document.getElementById('list-view-btn');
     elements.breadcrumb = document.querySelector('.breadcrumb');
+    elements.logoutBtn = document.getElementById('logout-btn');
 }
 
 /**
@@ -100,6 +104,9 @@ function setupEventListeners() {
         ui.switchToListView();
     }
     
+    // Logout button
+    elements.logoutBtn.addEventListener('click', logout);
+    
     // Global events to close context menus
     document.addEventListener('click', (e) => {
         const folderMenu = document.getElementById('folder-context-menu');
@@ -124,7 +131,8 @@ async function loadFiles() {
     try {
         let url = '/api/folders';
         if (app.currentPath) {
-            url += `/${app.currentPath}`;
+            // Use the correct endpoint for folder contents
+            url = `/api/folders/${app.currentPath}/contents`;
         }
         
         const response = await fetch(url);
@@ -211,6 +219,56 @@ window.selectFolder = (id, name) => {
     ui.updateBreadcrumb(name);
     loadFiles();
 };
+
+/**
+ * Check if user is authenticated
+ */
+function checkAuthentication() {
+    // Nombres de variables según auth.js
+    const TOKEN_KEY = 'oxicloud_token';
+    const TOKEN_EXPIRY_KEY = 'oxicloud_token_expiry';
+    const USER_DATA_KEY = 'oxicloud_user';
+    
+    const token = localStorage.getItem(TOKEN_KEY);
+    const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+    
+    if (!token || !tokenExpiry || new Date(tokenExpiry) < new Date()) {
+        // No token or expired token
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Display user information if available
+    const userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+    if (userData.username) {
+        // Update user avatar with initials
+        const userInitials = userData.username.substring(0, 2).toUpperCase();
+        const userAvatar = document.querySelector('.user-avatar');
+        if (userAvatar) {
+            userAvatar.textContent = userInitials;
+        }
+    }
+}
+
+/**
+ * Logout - clear all auth data and redirect to login
+ */
+function logout() {
+    // Nombres de variables según auth.js
+    const TOKEN_KEY = 'oxicloud_token';
+    const REFRESH_TOKEN_KEY = 'oxicloud_refresh_token';
+    const TOKEN_EXPIRY_KEY = 'oxicloud_token_expiry';
+    const USER_DATA_KEY = 'oxicloud_user';
+    
+    // Clear all authentication data
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    localStorage.removeItem(USER_DATA_KEY);
+    
+    // Redirect to login page
+    window.location.href = '/login';
+}
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', initApp);

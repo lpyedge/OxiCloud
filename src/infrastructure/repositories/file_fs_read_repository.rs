@@ -41,6 +41,17 @@ impl FileFsReadRepository {
         }
     }
     
+    /// Crea un stub para pruebas
+    pub fn default_stub() -> Self {
+        Self {
+            root_path: PathBuf::from("./storage"),
+            metadata_manager: Arc::new(FileMetadataManager::default()),
+            path_resolver: Arc::new(FilePathResolver::default_stub()),
+            config: AppConfig::default(),
+            parallel_processor: None,
+        }
+    }
+    
     /// Crea una entidad de archivo a partir de metadatos
     async fn create_file_entity(
         &self,

@@ -15,7 +15,8 @@ use crate::domain::repositories::file_repository::{
     FileRepository, FileRepositoryError, FileRepositoryResult
 };
 use crate::application::services::storage_mediator::StorageMediator;
-use crate::infrastructure::services::id_mapping_service::{IdMappingService, IdMappingError};
+use crate::application::ports::outbound::IdMappingPort;
+use crate::infrastructure::services::id_mapping_service::IdMappingError;
 use crate::infrastructure::services::file_metadata_cache::{FileMetadataCache, CacheEntryType};
 use crate::domain::services::path_service::{StoragePath, PathService};
 use crate::common::errors::{DomainError, ErrorContext};
@@ -30,7 +31,7 @@ use crate::infrastructure::repositories::parallel_file_processor::ParallelFilePr
 pub struct FileFsRepository {
     root_path: PathBuf,
     storage_mediator: Arc<dyn StorageMediator>,
-    id_mapping_service: Arc<IdMappingService>,
+    id_mapping_service: Arc<dyn crate::application::ports::outbound::IdMappingPort>,
     path_service: Arc<PathService>,
     metadata_cache: Arc<FileMetadataCache>,
     config: AppConfig,
@@ -43,7 +44,7 @@ impl FileFsRepository {
     pub fn new(
         root_path: PathBuf, 
         storage_mediator: Arc<dyn StorageMediator>,
-        id_mapping_service: Arc<IdMappingService>,
+        id_mapping_service: Arc<dyn crate::application::ports::outbound::IdMappingPort>,
         path_service: Arc<PathService>,
         metadata_cache: Arc<FileMetadataCache>,
     ) -> Self {
@@ -62,7 +63,7 @@ impl FileFsRepository {
     pub fn new_with_processor(
         root_path: PathBuf, 
         storage_mediator: Arc<dyn StorageMediator>,
-        id_mapping_service: Arc<IdMappingService>,
+        id_mapping_service: Arc<dyn crate::application::ports::outbound::IdMappingPort>,
         path_service: Arc<PathService>,
         metadata_cache: Arc<FileMetadataCache>,
         parallel_processor: Arc<ParallelFileProcessor>,
@@ -637,7 +638,7 @@ impl FileRepository for FileFsRepository {
         ).await?;
         
         // Ensure ID mapping is persisted
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         // Invalidate any directory cache entries for the parent folders
         // to ensure directory listings show the new file
@@ -736,13 +737,15 @@ impl FileRepository for FileFsRepository {
         
         // Update the ID mapping for this path
         self.id_mapping_service.update_path(&id, &file_storage_path).await
-            .map_err(|e| match e {
-                IdMappingError::NotFound(_) => {
+            .map_err(|e| {
+                // Domain errors should be mapped to appropriate FileRepositoryError
+                if e.kind == crate::common::errors::ErrorKind::NotFound {
                     // If no previous mapping exists, treat this as a new mapping
                     tracing::info!("No existing ID mapping found for {}, creating new mapping", id);
                     FileRepositoryError::Other("ID not found in mapping, but continuing with new mapping".to_string())
-                },
-                _ => FileRepositoryError::from(e),
+                } else {
+                    FileRepositoryError::from(e)
+                }
             })?;
         
         // Keep a string representation of the path for logging
@@ -761,7 +764,7 @@ impl FileRepository for FileFsRepository {
         ).await?;
         
         // Save changes to mapping service
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         tracing::info!("Saved file with specific ID: {} at path: {}", id, path_string);
         Ok(file)
@@ -942,7 +945,7 @@ impl FileRepository for FileFsRepository {
         
         // Persist any new ID mappings that were created
         if !files_result.is_empty() {
-            if let Err(e) = self.id_mapping_service.save_pending_changes().await {
+            if let Err(e) = self.id_mapping_service.save_changes().await {
                 tracing::error!("Error saving ID mappings: {}", e);
             }
         }
@@ -993,7 +996,7 @@ impl FileRepository for FileFsRepository {
             .map_err(FileRepositoryError::from)?;
         
         // Save the updated mappings
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         // Return success even if file deletion failed - we've removed the mapping
         Ok(())
@@ -1209,7 +1212,7 @@ impl FileRepository for FileFsRepository {
             .map_err(FileRepositoryError::from)?;
         
         // Save the updated mappings
-        self.id_mapping_service.save_pending_changes().await?;
+        self.id_mapping_service.save_changes().await?;
         
         // Create and return the updated file entity
         // Create an immutable new version of the file with the updated folder

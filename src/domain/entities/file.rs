@@ -50,6 +50,22 @@ pub struct File {
 
 // Ya no necesitamos este módulo, ahora usamos un String directamente
 
+impl Default for File {
+    fn default() -> Self {
+        Self {
+            id: "stub-id".to_string(),
+            name: "stub-file.txt".to_string(),
+            storage_path: StoragePath::from_string("/"),
+            path_string: "/".to_string(),
+            size: 0,
+            mime_type: "application/octet-stream".to_string(),
+            folder_id: None,
+            created_at: 0,
+            modified_at: 0,
+        }
+    }
+}
+
 impl File {
     /// Crea un nuevo archivo con validación
     pub fn new(
