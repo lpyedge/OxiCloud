@@ -96,6 +96,17 @@ impl IdMappingService {
         })
     }
     
+    /// Crea un servicio de mapeo de IDs en memoria (para pruebas)
+    pub fn new_in_memory() -> Self {
+        Self {
+            map_path: PathBuf::from("memory"),
+            id_map: RwLock::new(IdMap::default()),
+            save_mutex: Mutex::new(()),
+            timeouts: TimeoutConfig::default(),
+            pending_save: RwLock::new(false),
+        }
+    }
+    
     /// Carga el mapa de IDs desde disco con manejo robusto de errores
     async fn load_id_map(map_path: &PathBuf, timeouts: &TimeoutConfig) -> Result<IdMap, DomainError> {
         if map_path.exists() {

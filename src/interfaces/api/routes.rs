@@ -3,11 +3,14 @@ use axum::{
     routing::{get, post, put, delete},
     Router,
     extract::{State, Query, Path},
+    middleware,
 };
 use tower_http::{
     compression::CompressionLayer, 
     trace::TraceLayer,
 };
+use crate::common::config::AppConfig;
+use crate::interfaces::middleware::auth::auth_middleware;
 
 use crate::interfaces::middleware::cache::{HttpCache, start_cache_cleanup_task};
 
@@ -29,7 +32,7 @@ pub fn create_api_routes(
     folder_service: Arc<FolderService>, 
     file_service: Arc<FileService>,
     i18n_service: Option<Arc<I18nApplicationService>>,
-) -> Router {
+) -> Router<Arc<crate::common::di::AppState>> {
     // Inicializar el servicio de operaciones por lotes
     let batch_service = Arc::new(BatchOperationService::default(
         file_service.clone(),
@@ -136,6 +139,13 @@ pub fn create_api_routes(
         
         router = router.nest("/i18n", i18n_router);
     }
+    
+    // Get the app configuration
+    let config = AppConfig::from_env();
+    
+    // For now, just use the router as is - we'll properly implement the auth middleware later
+    // when all implementation details are fixed
+    let router = router;
     
     // Apply compression and tracing layers
     router

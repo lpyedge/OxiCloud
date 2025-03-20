@@ -223,3 +223,83 @@ macro_rules! impl_from_error {
 // Implementación para errores estándar comunes
 impl_from_error!(std::io::Error, "IO");
 impl_from_error!(serde_json::Error, "Serialization");
+
+// Error para capas HTTP/API
+#[derive(Debug)]
+pub struct AppError {
+    pub status_code: axum::http::StatusCode,
+    pub message: String,
+    pub error_type: String,
+}
+
+// Estructura de respuesta de error
+#[derive(serde::Serialize)]
+pub struct ErrorResponse {
+    pub status: String,
+    pub message: String,
+    pub error_type: String,
+}
+
+impl AppError {
+    pub fn new(status_code: axum::http::StatusCode, message: impl Into<String>, error_type: impl Into<String>) -> Self {
+        Self {
+            status_code,
+            message: message.into(),
+            error_type: error_type.into(),
+        }
+    }
+    
+    pub fn bad_request(message: impl Into<String>) -> Self {
+        Self::new(axum::http::StatusCode::BAD_REQUEST, message, "BadRequest")
+    }
+    
+    pub fn unauthorized(message: impl Into<String>) -> Self {
+        Self::new(axum::http::StatusCode::UNAUTHORIZED, message, "Unauthorized")
+    }
+    
+    pub fn forbidden(message: impl Into<String>) -> Self {
+        Self::new(axum::http::StatusCode::FORBIDDEN, message, "Forbidden")
+    }
+    
+    pub fn not_found(message: impl Into<String>) -> Self {
+        Self::new(axum::http::StatusCode::NOT_FOUND, message, "NotFound")
+    }
+    
+    pub fn internal_error(message: impl Into<String>) -> Self {
+        Self::new(axum::http::StatusCode::INTERNAL_SERVER_ERROR, message, "InternalError")
+    }
+}
+
+impl From<DomainError> for AppError {
+    fn from(err: DomainError) -> Self {
+        let status_code = match err.kind {
+            ErrorKind::NotFound => axum::http::StatusCode::NOT_FOUND,
+            ErrorKind::AlreadyExists => axum::http::StatusCode::CONFLICT,
+            ErrorKind::InvalidInput => axum::http::StatusCode::BAD_REQUEST,
+            ErrorKind::AccessDenied => axum::http::StatusCode::FORBIDDEN,
+            ErrorKind::Timeout => axum::http::StatusCode::REQUEST_TIMEOUT,
+            ErrorKind::InternalError => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            ErrorKind::NotImplemented => axum::http::StatusCode::NOT_IMPLEMENTED,
+        };
+        
+        Self {
+            status_code,
+            message: err.message,
+            error_type: err.kind.to_string(),
+        }
+    }
+}
+
+impl axum::response::IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        let status = self.status_code;
+        let error_response = ErrorResponse {
+            status: status.to_string(),
+            message: self.message,
+            error_type: self.error_type,
+        };
+        
+        let body = axum::Json(error_response);
+        (status, body).into_response()
+    }
+}

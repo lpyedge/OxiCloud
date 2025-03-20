@@ -16,6 +16,13 @@ impl FileUploadService {
     pub fn new(file_repository: Arc<dyn FileWritePort>) -> Self {
         Self { file_repository }
     }
+    
+    /// Crea un stub para pruebas
+    pub fn default_stub() -> Self {
+        Self {
+            file_repository: Arc::new(crate::infrastructure::repositories::FileFsWriteRepository::default_stub())
+        }
+    }
 }
 
 #[async_trait]

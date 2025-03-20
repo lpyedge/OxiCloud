@@ -170,6 +170,18 @@ body {
     align-items: center;
 }
 
+.logout-btn {
+    margin-left: 15px;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 18px;
+    transition: color 0.2s;
+}
+
+.logout-btn:hover {
+    color: #ff5e3a;
+}
+
 .language-selector {
     margin-right: 15px;
     padding: 5px 12px;

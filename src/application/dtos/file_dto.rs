@@ -62,3 +62,25 @@ impl From<FileDto> for File {
         )
     }
 }
+
+impl FileDto {
+    /// Creates an empty file DTO for stub implementations
+    pub fn empty() -> Self {
+        Self {
+            id: "stub-id".to_string(),
+            name: "stub-file".to_string(),
+            path: "/stub/path".to_string(),
+            size: 0,
+            mime_type: "application/octet-stream".to_string(),
+            folder_id: None,
+            created_at: 0,
+            modified_at: 0,
+        }
+    }
+}
+
+impl Default for FileDto {
+    fn default() -> Self {
+        Self::empty()
+    }
+}

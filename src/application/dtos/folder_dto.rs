@@ -81,3 +81,24 @@ impl From<FolderDto> for Folder {
         )
     }
 }
+
+impl FolderDto {
+    /// Creates an empty folder DTO for stub implementations
+    pub fn empty() -> Self {
+        Self {
+            id: "stub-id".to_string(),
+            name: "stub-folder".to_string(),
+            path: "/stub/path".to_string(),
+            parent_id: None,
+            created_at: 0,
+            modified_at: 0,
+            is_root: true,
+        }
+    }
+}
+
+impl Default for FolderDto {
+    fn default() -> Self {
+        Self::empty()
+    }
+}

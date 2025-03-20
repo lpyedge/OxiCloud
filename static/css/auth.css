@@ -1,0 +1,201 @@
+/* Auth styles for OxiCloud */
+.auth-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f5f7fa;
+}
+
+.auth-panel {
+    width: 400px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    padding: 30px;
+    text-align: center;
+}
+
+.auth-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.auth-logo-icon {
+    width: 50px;
+    height: 50px;
+    background-color: #ff5e3a;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+
+.auth-logo-icon svg {
+    width: 30px;
+    height: 30px;
+    fill: white;
+}
+
+.auth-logo-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2a3042;
+}
+
+.auth-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 25px;
+    color: #2a3042;
+}
+
+.auth-form {
+    width: 100%;
+    text-align: left;
+}
+
+.auth-input-group {
+    margin-bottom: 20px;
+}
+
+.auth-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    font-size: 14px;
+    background-color: #f9fafb;
+    transition: border-color 0.2s;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: #ff5e3a;
+    box-shadow: 0 0 0 3px rgba(255, 94, 58, 0.1);
+}
+
+.auth-button {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    background-color: #ff5e3a;
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.2s;
+    margin-top: 10px;
+}
+
+.auth-button:hover {
+    background-color: #e64a2e;
+}
+
+.auth-button:disabled {
+    background-color: #f9a799;
+    cursor: not-allowed;
+}
+
+.auth-toggle {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #718096;
+}
+
+.auth-toggle-link {
+    color: #ff5e3a;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-toggle-link:hover {
+    text-decoration: underline;
+}
+
+.auth-error {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: none;
+}
+
+.auth-success {
+    background-color: #dcfce7;
+    color: #15803d;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    display: none;
+}
+
+/* Admin setup panel styles */
+.admin-setup-panel {
+    display: none;
+}
+
+.setup-steps {
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.setup-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 30%;
+}
+
+.step-number {
+    width: 30px;
+    height: 30px;
+    background-color: #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.step-number.active {
+    background-color: #ff5e3a;
+    color: white;
+}
+
+.step-title {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.step-title.active {
+    color: #1e293b;
+    font-weight: 500;
+}
+
+@media (max-width: 480px) {
+    .auth-panel {
+        width: 90%;
+        padding: 20px;
+    }
+}

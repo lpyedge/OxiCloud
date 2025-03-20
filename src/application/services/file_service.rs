@@ -79,6 +79,51 @@ impl FileService {
         Self { file_repository }
     }
     
+    /// Creates a stub implementation for testing and middleware
+    pub fn new_stub() -> impl FileUseCase {
+        struct FileServiceStub;
+        
+        #[async_trait]
+        impl FileUseCase for FileServiceStub {
+            async fn upload_file(
+                &self,
+                _name: String,
+                _folder_id: Option<String>,
+                _content_type: String,
+                _content: Vec<u8>,
+            ) -> Result<FileDto, DomainError> {
+                Ok(FileDto::empty())
+            }
+            
+            async fn get_file(&self, _id: &str) -> Result<FileDto, DomainError> {
+                Ok(FileDto::empty())
+            }
+            
+            async fn list_files(&self, _folder_id: Option<&str>) -> Result<Vec<FileDto>, DomainError> {
+                Ok(vec![])
+            }
+            
+            async fn delete_file(&self, _id: &str) -> Result<(), DomainError> {
+                Ok(())
+            }
+            
+            async fn get_file_content(&self, _id: &str) -> Result<Vec<u8>, DomainError> {
+                Ok(vec![])
+            }
+            
+            async fn get_file_stream(&self, _id: &str) -> Result<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>, DomainError> {
+                let empty_stream = futures::stream::empty();
+                Ok(Box::new(empty_stream))
+            }
+            
+            async fn move_file(&self, _file_id: &str, _folder_id: Option<String>) -> Result<FileDto, DomainError> {
+                Ok(FileDto::empty())
+            }
+        }
+        
+        FileServiceStub
+    }
+    
     /// Uploads a new file from bytes
     pub async fn upload_file_from_bytes(
         &self,

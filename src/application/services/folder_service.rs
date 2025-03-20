@@ -17,6 +17,57 @@ impl FolderService {
     pub fn new(folder_storage: Arc<dyn FolderStoragePort>) -> Self {
         Self { folder_storage }
     }
+    
+    /// Creates a stub implementation for testing and middleware
+    pub fn new_stub() -> impl FolderUseCase {
+        struct FolderServiceStub;
+        
+        #[async_trait]
+        impl FolderUseCase for FolderServiceStub {
+            async fn create_folder(&self, _dto: CreateFolderDto) -> Result<FolderDto, DomainError> {
+                Ok(FolderDto::empty())
+            }
+            
+            async fn get_folder(&self, _id: &str) -> Result<FolderDto, DomainError> {
+                Ok(FolderDto::empty())
+            }
+            
+            async fn get_folder_by_path(&self, _path: &str) -> Result<FolderDto, DomainError> {
+                Ok(FolderDto::empty())
+            }
+            
+            async fn list_folders(&self, _parent_id: Option<&str>) -> Result<Vec<FolderDto>, DomainError> {
+                Ok(vec![])
+            }
+            
+            async fn list_folders_paginated(
+                &self, 
+                _parent_id: Option<&str>,
+                _pagination: &crate::application::dtos::pagination::PaginationRequestDto
+            ) -> Result<crate::application::dtos::pagination::PaginatedResponseDto<FolderDto>, DomainError> {
+                Ok(crate::application::dtos::pagination::PaginatedResponseDto::new(
+                    vec![],
+                    0,
+                    10,
+                    0
+                ))
+            }
+            
+            async fn rename_folder(&self, _id: &str, _dto: RenameFolderDto) -> Result<FolderDto, DomainError> {
+                Ok(FolderDto::empty())
+            }
+            
+            async fn move_folder(&self, _id: &str, _dto: MoveFolderDto) -> Result<FolderDto, DomainError> {
+                Ok(FolderDto::empty())
+            }
+            
+            async fn delete_folder(&self, _id: &str) -> Result<(), DomainError> {
+                Ok(())
+            }
+        }
+        
+        FolderServiceStub
+    }
 }
 
 #[async_trait]

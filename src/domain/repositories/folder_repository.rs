@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use crate::domain::entities::folder::Folder;
 use crate::domain::services::path_service::StoragePath;
+use crate::common::errors::DomainError;
 
 /// Error types for folder repository operations
 #[derive(Debug, thiserror::Error)]
@@ -23,6 +24,9 @@ pub enum FolderRepositoryError {
     
     #[error("Validation error: {0}")]
     ValidationError(String),
+    
+    #[error("Domain error: {0}")]
+    DomainError(#[from] DomainError),
     
     #[error("Other error: {0}")]
     Other(String),
