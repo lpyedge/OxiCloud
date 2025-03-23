@@ -95,7 +95,9 @@ OxiCloud incorporates multiple advanced performance optimizations:
 
 ## 📸 Screenshots
 
-*Coming soon!*
+![OxiCloud Dashboard](doc/images/Captura%20de%20pantalla%202025-03-23%20230739.png)
+
+*OxiCloud main interface showing file and folder management*
 
 ## 🛠️ Getting Started
 
