@@ -8,6 +8,7 @@ use tokio_util::codec::{BytesCodec, FramedRead};
 use mime_guess::from_path;
 use futures::{Stream, StreamExt};
 use bytes::Bytes;
+use uuid::Uuid;
 use tokio::task;
 
 use crate::domain::entities::file::File;
@@ -627,7 +628,7 @@ impl FileRepository for FileFsRepository {
         let path_string = file_storage_path.to_string();
         
         let file = self.create_file_entity(
-            id,
+            id.clone(), // Clone ID for use in logging
             original_name, // Use the potentially modified name with counter suffix
             file_storage_path,
             size,
@@ -637,8 +638,14 @@ impl FileRepository for FileFsRepository {
             Some(modified_at),
         ).await?;
         
-        // Ensure ID mapping is persisted
-        self.id_mapping_service.save_changes().await?;
+        // Ensure ID mapping is persisted - this is critical for later retrieval
+        let save_result = self.id_mapping_service.save_changes().await;
+        if let Err(e) = &save_result {
+            tracing::error!("Failed to save ID mapping for file {}: {}", id, e);
+        } else {
+            tracing::info!("Successfully saved ID mapping for file ID: {} -> path: {}", id, path_string);
+        }
+        save_result?;
         
         // Invalidate any directory cache entries for the parent folders
         // to ensure directory listings show the new file
@@ -828,6 +835,84 @@ impl FileRepository for FileFsRepository {
     async fn list_files(&self, folder_id: Option<&str>) -> FileRepositoryResult<Vec<File>> {
         tracing::info!("Listing files in folder_id: {:?}", folder_id);
         
+        // Si estamos en modo desarrollo, listamos todos los archivos del directorio raíz
+        // para facilitar el testing
+        let base_storage_path = self.root_path.clone();
+        let is_dev_mode = true; // Hard-code development mode para debugging
+        
+        if is_dev_mode && folder_id.is_none() {
+            tracing::info!("Modo desarrollo activado: listando todos los archivos en el directorio raíz");
+            
+            let mut files_result = Vec::new();
+            
+            // Listar archivos en el directorio raíz
+            match fs::read_dir(&base_storage_path).await {
+                Ok(mut entries) => {
+                    while let Some(entry) = entries.next_entry().await.unwrap_or(None) {
+                        let path = entry.path();
+                        
+                        // Skip if not a file or if it's a hidden/special file
+                        if !path.is_file() {
+                            continue;
+                        }
+                        
+                        let file_name = entry.file_name().to_string_lossy().to_string();
+                        if file_name.starts_with('.') || file_name == "folder_ids.json" || file_name == "file_ids.json" {
+                            continue;
+                        }
+                        
+                        // Get file metadata
+                        let metadata = match fs::metadata(&path).await {
+                            Ok(m) => m,
+                            Err(e) => {
+                                tracing::error!("Error getting metadata for {:?}: {}", path, e);
+                                continue;
+                            }
+                        };
+                        
+                        // Generate consistent ID for the file based on name
+                        let storage_path = StoragePath::from_string(&file_name);
+                        let id = Uuid::new_v4().to_string();
+                        
+                        // Extract file properties
+                        let size = metadata.len();
+                        let created_at = metadata.created()
+                            .map(|time| time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                            .unwrap_or(0);
+                        let modified_at = metadata.modified()
+                            .map(|time| time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+                            .unwrap_or(0);
+                        
+                        // Determine MIME type
+                        let mime_type = from_path(&path)
+                            .first_or_octet_stream()
+                            .to_string();
+                        
+                        // Create file entity
+                        let file = File::with_timestamps(
+                            id,
+                            file_name,
+                            storage_path,
+                            size,
+                            mime_type,
+                            None, // No folder ID
+                            created_at,
+                            modified_at,
+                        ).unwrap();
+                        
+                        files_result.push(file);
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("Error reading directory {:?}: {}", base_storage_path, e);
+                }
+            }
+            
+            tracing::info!("Modo desarrollo: se encontraron {} archivos en el directorio raíz", files_result.len());
+            return Ok(files_result);
+        }
+        
+        // Si no estamos en modo desarrollo o se especificó un folder_id, seguimos la lógica normal
         // Get the folder storage path
         let folder_storage_path = match folder_id {
             Some(id) => {

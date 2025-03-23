@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test OxiCloud</title>
+</head>
+<body>
+    <h1>OxiCloud Test Page</h1>
+    <div id="result"></div>
+    <button id="createBtn">Crear carpeta nueva</button>
+    <button id="listBtn">Listar carpetas</button>
+    
+    <script>
+        // Función para mostrar resultados
+        function showResult(data) {
+            document.getElementById('result').innerHTML = 
+                '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+        
+        // Función para crear carpeta
+        async function createFolder() {
+            try {
+                const response = await fetch('/api/folders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: 'test_folder_' + Date.now(),
+                        parent_id: null
+                    })
+                });
+                
+                const data = await response.json();
+                console.log('Respuesta de creación de carpeta:', data);
+                showResult(data);
+                
+                return data;
+            } catch (error) {
+                console.error('Error al crear carpeta:', error);
+                showResult({error: error.message});
+                return null;
+            }
+        }
+
+        // Función para listar carpetas
+        async function listFolders() {
+            try {
+                const response = await fetch('/api/folders');
+                const data = await response.json();
+                console.log('Listado de carpetas:', data);
+                showResult(data);
+                
+                return data;
+            } catch (error) {
+                console.error('Error al listar carpetas:', error);
+                showResult({error: error.message});
+                return [];
+            }
+        }
+        
+        // Asignar eventos a botones
+        document.getElementById('createBtn').addEventListener('click', createFolder);
+        document.getElementById('listBtn').addEventListener('click', listFolders);
+    </script>
+</body>
+</html>

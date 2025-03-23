@@ -331,16 +331,23 @@ impl FolderRepository for FolderFsRepository {
         // Create and return the folder entity with a persisted ID
         let id = self.id_mapping_service.get_or_create_id(&folder_storage_path).await?;
         let folder = self.create_folder_entity(
-            id,
-            name,
-            folder_storage_path,
-            parent_id,
+            id.clone(), // Clone for logging
+            name.clone(), // Clone name for logging
+            folder_storage_path.clone(), // Clone for logging
+            parent_id.clone(), // Clone for logging
             None,
             None,
         ).await?;
         
-        // Ensure ID mapping is persisted
-        self.id_mapping_service.save_changes().await?;
+        // Ensure ID mapping is persisted - this is critical for later retrieval
+        let save_result = self.id_mapping_service.save_changes().await;
+        if let Err(e) = &save_result {
+            tracing::error!("Failed to save ID mapping for folder {}: {}", id, e);
+        } else {
+            tracing::info!("Successfully saved ID mapping for folder ID: {} -> path: {} (name: {})", 
+                id, folder_storage_path.to_string(), name);
+        }
+        save_result?;
         
         tracing::debug!("Created folder with ID: {}", folder.id());
         Ok(folder)

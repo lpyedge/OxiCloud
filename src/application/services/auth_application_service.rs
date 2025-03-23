@@ -4,12 +4,15 @@ use crate::domain::entities::session::Session;
 use crate::domain::services::auth_service::AuthService;
 use crate::application::ports::auth_ports::{UserStoragePort, SessionStoragePort};
 use crate::application::dtos::user_dto::{UserDto, RegisterDto, LoginDto, AuthResponseDto, ChangePasswordDto, RefreshTokenDto};
+use crate::application::dtos::folder_dto::CreateFolderDto;
+use crate::application::ports::inbound::FolderUseCase;
 use crate::common::errors::{DomainError, ErrorKind};
 
 pub struct AuthApplicationService {
     user_storage: Arc<dyn UserStoragePort>,
     session_storage: Arc<dyn SessionStoragePort>,
     auth_service: Arc<AuthService>,
+    folder_service: Option<Arc<dyn FolderUseCase>>,
 }
 
 impl AuthApplicationService {
@@ -22,7 +25,14 @@ impl AuthApplicationService {
             user_storage,
             session_storage,
             auth_service,
+            folder_service: None,
         }
+    }
+    
+    /// Configura el servicio de carpetas, necesario para crear carpetas personales
+    pub fn with_folder_service(mut self, folder_service: Arc<dyn FolderUseCase>) -> Self {
+        self.folder_service = Some(folder_service);
+        self
     }
     
     pub async fn register(&self, dto: RegisterDto) -> Result<UserDto, DomainError> {
@@ -48,7 +58,7 @@ impl AuthApplicationService {
         
         // Crear usuario
         let user = User::new(
-            dto.username,
+            dto.username.clone(),
             dto.email,
             dto.password,
             UserRole::User, // Por defecto: usuario normal
@@ -61,6 +71,42 @@ impl AuthApplicationService {
         
         // Guardar usuario
         let created_user = self.user_storage.create_user(user).await?;
+        
+        // Crear carpeta personal para el usuario
+        if let Some(folder_service) = &self.folder_service {
+            let folder_name = format!("Mi Carpeta - {}", dto.username);
+            
+            match folder_service.create_folder(CreateFolderDto {
+                name: folder_name,
+                parent_id: None,
+            }).await {
+                Ok(folder) => {
+                    tracing::info!(
+                        "Carpeta personal creada para el usuario {}: {} (ID: {})", 
+                        created_user.id(), 
+                        folder.name, 
+                        folder.id
+                    );
+                    
+                    // Aquí se podría guardar la asociación de la carpeta al usuario
+                    // por ejemplo, en una tabla de relación carpeta-usuario
+                },
+                Err(e) => {
+                    // No fallamos el registro por un error en la creación de la carpeta
+                    // pero lo registramos para investigación
+                    tracing::error!(
+                        "No se pudo crear la carpeta personal para el usuario {}: {}", 
+                        created_user.id(), 
+                        e
+                    );
+                }
+            }
+        } else {
+            tracing::warn!(
+                "No se configuró el servicio de carpetas, no se puede crear carpeta personal para el usuario: {}", 
+                created_user.id()
+            );
+        }
         
         tracing::info!("Usuario registrado: {}", created_user.id());
         Ok(UserDto::from(created_user))

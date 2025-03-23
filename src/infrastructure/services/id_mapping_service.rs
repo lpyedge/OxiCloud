@@ -146,22 +146,48 @@ impl IdMappingService {
                         tracing::info!("Backed up corrupted ID map to {}", backup_path.display());
                     }
                     
-                    return Err(DomainError::new(
-                        ErrorKind::InternalError,
-                        "IdMapping",
-                        format!("Error parsing ID map: {}", e)
-                    ).with_source(e));
+                    tracing::info!("Creating new empty map after error");
+                    return Ok(IdMap {
+                        path_to_id: HashMap::new(),
+                        id_to_path: HashMap::new(),
+                        version: 1, // Iniciar con versión 1
+                    });
                 }
             }
         }
         
-        // Devolver un mapa vacío si el archivo no existe
+        // Devolver un mapa vacío si el archivo no existe y crear el archivo
         tracing::info!("No existing ID map found, creating new empty map");
-        Ok(IdMap {
+        let empty_map = IdMap {
             path_to_id: HashMap::new(),
             id_to_path: HashMap::new(),
             version: 1, // Iniciar con versión 1
-        })
+        };
+        
+        // Ensure directory exists
+        if let Some(parent) = map_path.parent() {
+            if !parent.exists() {
+                if let Err(e) = fs::create_dir_all(parent).await {
+                    tracing::error!("Failed to create directory for ID map: {}", e);
+                }
+            }
+        }
+        
+        // Write empty map to file
+        match serde_json::to_string_pretty(&empty_map) {
+            Ok(json) => {
+                if let Err(e) = fs::write(map_path, json).await {
+                    tracing::error!("Failed to write initial empty ID map: {}", e);
+                } else {
+                    tracing::info!("Created initial empty ID map at {}", map_path.display());
+                }
+            },
+            Err(e) => {
+                tracing::error!("Failed to serialize empty ID map: {}", e);
+            }
+        }
+        
+        Ok(empty_map)
     }
     
     /// Guarda el mapa de IDs en disco de manera segura

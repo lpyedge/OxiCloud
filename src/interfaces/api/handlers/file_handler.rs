@@ -8,8 +8,12 @@ use axum::{
 use serde::Deserialize;
 use std::collections::HashMap;
 use futures::Stream;
+use futures::StreamExt;
 use std::task::{Context, Poll};
 use std::pin::Pin;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
+use std::path::PathBuf;
 
 use crate::application::services::file_service::{FileService, FileServiceError};
 use crate::infrastructure::services::compression_service::{
@@ -60,17 +64,25 @@ impl FileHandler {
         let mut file_part = None;
         let mut folder_id = None;
         
+        tracing::info!("Processing file upload request");
+        
         while let Some(field) = multipart.next_field().await.unwrap_or(None) {
             let name = field.name().unwrap_or("").to_string();
+            tracing::info!("Multipart field received: {}", name);
             
             if name == "file" {
-                file_part = Some((
-                    field.file_name().unwrap_or("unnamed").to_string(),
-                    field.content_type().unwrap_or("application/octet-stream").to_string(),
-                    field.bytes().await.unwrap_or_default(),
-                ));
+                let filename = field.file_name().unwrap_or("unnamed").to_string();
+                let content_type = field.content_type().unwrap_or("application/octet-stream").to_string();
+                tracing::info!("File received: {} ({})", filename, content_type);
+                
+                let bytes = field.bytes().await.unwrap_or_default();
+                tracing::info!("File size: {} bytes", bytes.len());
+                
+                file_part = Some((filename, content_type, bytes));
             } else if name == "folder_id" {
                 let folder_id_value = field.text().await.unwrap_or_default();
+                tracing::info!("folder_id received: {}", folder_id_value);
+                
                 if !folder_id_value.is_empty() {
                     folder_id = Some(folder_id_value);
                 }
@@ -79,22 +91,38 @@ impl FileHandler {
         
         // Check if file was provided
         if let Some((filename, content_type, data)) = file_part {
-            // Upload file from bytes
-            match service.upload_file_from_bytes(filename, folder_id, content_type, data.to_vec()).await {
-                Ok(file) => (StatusCode::CREATED, Json(file)).into_response(),
+            tracing::info!("Uploading file '{}' to folder_id: {:?}", filename, folder_id);
+            
+            // Use the proper file service to handle the upload
+            match service.upload_file_from_bytes(filename.clone(), folder_id.clone(), content_type.clone(), data.to_vec()).await {
+                Ok(file) => {
+                    tracing::info!("File uploaded successfully: {} (ID: {})", filename, file.id);
+                    
+                    // Log additional debugging information
+                    tracing::info!("Created file details: folder_id={:?}, size={}, path={}",
+                        file.folder_id, file.size, file.path);
+                    
+                    // Return success response with file information
+                    (StatusCode::CREATED, Json(file)).into_response()
+                },
                 Err(err) => {
+                    tracing::error!("Error uploading file '{}' through service: {}", filename, err);
+                    
+                    // Return error response
                     let status = match &err {
-                        FileServiceError::Conflict(_) => StatusCode::CONFLICT,
                         FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
+                        FileServiceError::AccessError(_) => StatusCode::SERVICE_UNAVAILABLE,
                         _ => StatusCode::INTERNAL_SERVER_ERROR,
                     };
                     
                     (status, Json(serde_json::json!({
-                        "error": err.to_string()
+                        "error": format!("Error uploading file: {}", err)
                     }))).into_response()
                 }
             }
         } else {
+            tracing::error!("Error: No file provided in request");
+            
             (StatusCode::BAD_REQUEST, Json(serde_json::json!({
                 "error": "No file provided"
             }))).into_response()
@@ -350,12 +378,27 @@ impl FileHandler {
         State(service): State<AppState>,
         folder_id: Option<&str>,
     ) -> impl IntoResponse {
+        tracing::info!("Listing files with folder_id: {:?}", folder_id);
+        
+        // Simply use the file service to list files
         match service.list_files(folder_id).await {
             Ok(files) => {
-                // Always return an array even if empty
+                // Log success for debugging purposes
+                tracing::info!("Found {} files through the service", files.len());
+                
+                if !files.is_empty() {
+                    tracing::info!("First file in service list: {} (ID: {})", 
+                        files[0].name, files[0].id);
+                } else {
+                    tracing::info!("No files found in folder through service");
+                }
+                
+                // Return the files as JSON response
                 (StatusCode::OK, Json(files)).into_response()
             },
             Err(err) => {
+                tracing::error!("Error listing files through service: {}", err);
+                
                 let status = match &err {
                     FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -374,16 +417,22 @@ impl FileHandler {
         State(service): State<AppState>,
         Path(id): Path<String>,
     ) -> impl IntoResponse {
+        // Use the file service to delete the file
         match service.delete_file(&id).await {
-            Ok(_) => StatusCode::NO_CONTENT.into_response(),
+            Ok(_) => {
+                tracing::info!("File successfully deleted: {}", id);
+                StatusCode::NO_CONTENT.into_response()
+            },
             Err(err) => {
+                tracing::error!("Error deleting file: {}", err);
+                
                 let status = match &err {
                     FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
                 (status, Json(serde_json::json!({
-                    "error": err.to_string()
+                    "error": format!("Error deleting file: {}", err)
                 }))).into_response()
             }
         }
@@ -395,53 +444,51 @@ impl FileHandler {
         Path(id): Path<String>,
         Json(payload): Json<MoveFilePayload>,
     ) -> impl IntoResponse {
-        tracing::info!("API request: Mover archivo con ID: {} a carpeta: {:?}", id, payload.folder_id);
+        tracing::info!("API request: Moving file with ID: {} to folder: {:?}", id, payload.folder_id);
         
-        // Primero verificar si el archivo existe
+        // First verify if the file exists
         match service.get_file(&id).await {
             Ok(file) => {
-                tracing::info!("Archivo encontrado: {} (ID: {}), procediendo con la operación de mover", file.name, id);
+                tracing::info!("File found: {} (ID: {}), proceeding with move operation", file.name, id);
                 
-                // Para carpetas de destino, simplemente confiamos en que la 
-                // operación de mover verificará su existencia
+                // For target folders, we trust that the move operation will verify their existence
                 if let Some(folder_id) = &payload.folder_id {
-                    tracing::info!("Se intentará mover a carpeta: {}", folder_id);
+                    tracing::info!("Will attempt to move to folder: {}", folder_id);
                 }
                 
-                // Proceder con la operación de mover
+                // Proceed with the move operation
                 match service.move_file(&id, payload.folder_id).await {
                     Ok(file) => {
-                        tracing::info!("Archivo movido exitosamente: {} (ID: {})", file.name, file.id);
+                        tracing::info!("File moved successfully: {} (ID: {})", file.name, file.id);
                         (StatusCode::OK, Json(file)).into_response()
                     },
                     Err(err) => {
                         let status = match &err {
                             FileServiceError::NotFound(_) => {
-                                tracing::error!("Error al mover archivo - no encontrado: {}", err);
+                                tracing::error!("Error moving file - not found: {}", err);
                                 StatusCode::NOT_FOUND
                             },
                             FileServiceError::Conflict(_) => {
-                                tracing::error!("Error al mover archivo - ya existe: {}", err);
+                                tracing::error!("Error moving file - already exists: {}", err);
                                 StatusCode::CONFLICT
                             },
                             _ => {
-                                tracing::error!("Error al mover archivo: {}", err);
+                                tracing::error!("Error moving file: {}", err);
                                 StatusCode::INTERNAL_SERVER_ERROR
                             }
                         };
                         
                         (status, Json(serde_json::json!({
-                            "error": format!("Error al mover el archivo: {}", err.to_string()),
-                            "code": status.as_u16(),
-                            "details": format!("Error al mover archivo con ID: {} - {}", id, err)
+                            "error": format!("Error moving file: {}", err.to_string()),
+                            "code": status.as_u16()
                         }))).into_response()
                     }
                 }
             },
             Err(err) => {
-                tracing::error!("Error al encontrar archivo para mover - no existe: {} (ID: {})", err, id);
+                tracing::error!("Error finding file to move - does not exist: {} (ID: {})", err, id);
                 (StatusCode::NOT_FOUND, Json(serde_json::json!({
-                    "error": format!("El archivo con ID: {} no existe", id),
+                    "error": format!("The file with ID: {} does not exist", id),
                     "code": StatusCode::NOT_FOUND.as_u16()
                 }))).into_response()
             }

@@ -1,13 +1,16 @@
 -- Create the auth schema
 CREATE SCHEMA IF NOT EXISTS auth;
 
+-- Create UserRole enum type
+CREATE TYPE auth.userrole AS ENUM ('admin', 'user');
+
 -- Create the users table
 CREATE TABLE IF NOT EXISTS auth.users (
     id VARCHAR(36) PRIMARY KEY,
     username VARCHAR(32) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role VARCHAR(10) NOT NULL,
+    role auth.userrole NOT NULL,
     storage_quota_bytes BIGINT NOT NULL,
     storage_used_bytes BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL,

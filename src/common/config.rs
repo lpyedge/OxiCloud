@@ -209,7 +209,8 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            connection_string: "postgres://postgres:postgres@localhost/oxicloud".to_string(),
+            // Updated connection string with default credentials that PostgreSQL often uses
+            connection_string: "postgres://postgres:postgres@localhost:5432/postgres".to_string(),
             max_connections: 20,
             min_connections: 5,
             connect_timeout_secs: 10,
@@ -252,7 +253,7 @@ pub struct FeaturesConfig {
 impl Default for FeaturesConfig {
     fn default() -> Self {
         Self {
-            enable_auth: false,
+            enable_auth: true,  // Enable authentication by default
             enable_user_storage_quotas: false,
             enable_file_sharing: false,
         }
