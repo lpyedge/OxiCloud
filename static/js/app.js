@@ -170,15 +170,25 @@ async function loadFiles() {
         }
         
         try {
+            console.log(`Fetching files from: ${filesUrl}`);
             const filesResponse = await fetch(filesUrl);
+            console.log(`Files response status: ${filesResponse.status}`);
+            
             if (filesResponse.ok) {
                 const files = await filesResponse.json();
+                console.log(`Files received:`, files);
                 
                 // Add files (check if it's an array)
                 const fileList = Array.isArray(files) ? files : [];
+                console.log(`Processing ${fileList.length} files`);
+                
                 fileList.forEach(file => {
+                    console.log(`Adding file to view: ${file.name} (${file.id})`);
                     ui.addFileToView(file);
                 });
+            } else {
+                const errorText = await filesResponse.text();
+                console.error(`Error loading files: ${filesResponse.status} - ${errorText}`);
             }
         } catch (error) {
             console.error('Error loading files:', error);

@@ -28,9 +28,23 @@ const fileOps = {
             }
 
             try {
+                console.log(`Uploading file to current path: ${window.app.currentPath || 'root'}`);
+                
+                // Usamos la URL correcta para la subida de archivos
+                console.log('Formulario a enviar:', {
+                    file: file.name,
+                    size: file.size,
+                    folder_id: window.app.currentPath || 'root'
+                });
+                
                 const response = await fetch('/api/files/upload', {
                     method: 'POST',
                     body: formData
+                });
+                
+                console.log('Respuesta del servidor:', {
+                    status: response.status,
+                    statusText: response.statusText
                 });
 
                 // Update progress
@@ -39,10 +53,12 @@ const fileOps = {
                 progressBar.style.width = percentComplete + '%';
 
                 if (response.ok) {
-                    console.log(`Successfully uploaded ${file.name}`);
+                    const responseData = await response.json();
+                    console.log(`Successfully uploaded ${file.name}`, responseData);
 
                     if (i === totalFiles - 1) {
                         // Last file uploaded
+                        console.log('Recargando lista de archivos después de subida');
                         window.loadFiles();
                         setTimeout(() => {
                             document.getElementById('dropzone').style.display = 'none';
