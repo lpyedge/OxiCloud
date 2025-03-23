@@ -1,6 +1,6 @@
 # 🚀 OxiCloud
 
-![OxiCloud](static/oxicloud-logo.svg)
+<img src="static/oxicloud-logo.svg" alt="OxiCloud" width="300" />
 
 ## The high-performance, Rust-powered file storage solution
 
