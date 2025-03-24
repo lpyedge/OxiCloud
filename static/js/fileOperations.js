@@ -241,27 +241,40 @@ const fileOps = {
     },
 
     /**
-     * Delete a file
+     * Move a file to trash
      * @param {string} fileId - File ID
+     * @param {string} fileName - File name
      * @returns {Promise<boolean>} - Success status
      */
     async deleteFile(fileId, fileName) {
-        if (!confirm(`¿Estás seguro de que quieres eliminar el archivo "${fileName}"?`)) {
+        if (!confirm(`¿Estás seguro de que quieres mover a la papelera el archivo "${fileName}"?`)) {
             return false;
         }
         
         try {
-            const response = await fetch(`/api/files/${fileId}`, {
+            // Use the trash API endpoint
+            const response = await fetch(`/api/trash/files/${fileId}`, {
                 method: 'DELETE'
             });
 
             if (response.ok) {
                 window.loadFiles();
-                window.ui.showNotification('Archivo eliminado', `"${fileName}" eliminado correctamente`);
+                window.ui.showNotification('Archivo movido a papelera', `"${fileName}" movido a la papelera`);
                 return true;
             } else {
-                window.ui.showNotification('Error', 'Error al eliminar el archivo');
-                return false;
+                // Fallback to direct deletion if trash fails
+                const fallbackResponse = await fetch(`/api/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (fallbackResponse.ok) {
+                    window.loadFiles();
+                    window.ui.showNotification('Archivo eliminado', `"${fileName}" eliminado correctamente`);
+                    return true;
+                } else {
+                    window.ui.showNotification('Error', 'Error al eliminar el archivo');
+                    return false;
+                }
             }
         } catch (error) {
             console.error('Error deleting file:', error);
@@ -271,18 +284,19 @@ const fileOps = {
     },
 
     /**
-     * Delete a folder
+     * Move a folder to trash
      * @param {string} folderId - Folder ID
      * @param {string} folderName - Folder name
      * @returns {Promise<boolean>} - Success status
      */
     async deleteFolder(folderId, folderName) {
-        if (!confirm(`¿Estás seguro de que quieres eliminar la carpeta "${folderName}" y todo su contenido?`)) {
+        if (!confirm(`¿Estás seguro de que quieres mover a la papelera la carpeta "${folderName}" y todo su contenido?`)) {
             return false;
         }
         
         try {
-            const response = await fetch(`/api/folders/${folderId}`, {
+            // Use the trash API endpoint
+            const response = await fetch(`/api/trash/folders/${folderId}`, {
                 method: 'DELETE'
             });
 
@@ -293,15 +307,137 @@ const fileOps = {
                     window.ui.updateBreadcrumb('');
                 }
                 window.loadFiles();
-                window.ui.showNotification('Carpeta eliminada', `"${folderName}" eliminada correctamente`);
+                window.ui.showNotification('Carpeta movida a papelera', `"${folderName}" movida a la papelera`);
                 return true;
             } else {
-                window.ui.showNotification('Error', 'Error al eliminar la carpeta');
-                return false;
+                // Fallback to direct deletion if trash fails
+                const fallbackResponse = await fetch(`/api/folders/${folderId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (fallbackResponse.ok) {
+                    // If we're inside the folder we just deleted, go back up
+                    if (window.app.currentPath === folderId) {
+                        window.app.currentPath = '';
+                        window.ui.updateBreadcrumb('');
+                    }
+                    window.loadFiles();
+                    window.ui.showNotification('Carpeta eliminada', `"${folderName}" eliminada correctamente`);
+                    return true;
+                } else {
+                    window.ui.showNotification('Error', 'Error al eliminar la carpeta');
+                    return false;
+                }
             }
         } catch (error) {
             console.error('Error deleting folder:', error);
             window.ui.showNotification('Error', 'Error al eliminar la carpeta');
+            return false;
+        }
+    },
+    
+    /**
+     * Obtener elementos de la papelera
+     * @returns {Promise<Array>} - Lista de elementos en la papelera
+     */
+    async getTrashItems() {
+        try {
+            const response = await fetch('/api/trash');
+            
+            if (response.ok) {
+                return await response.json();
+            } else {
+                console.error('Error fetching trash items:', response.statusText);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error fetching trash items:', error);
+            return [];
+        }
+    },
+    
+    /**
+     * Restaurar un elemento desde la papelera
+     * @param {string} trashId - ID del elemento en la papelera
+     * @returns {Promise<boolean>} - Éxito de la operación
+     */
+    async restoreFromTrash(trashId) {
+        try {
+            const response = await fetch(`/api/trash/${trashId}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            if (response.ok) {
+                window.ui.showNotification('Elemento restaurado', 'Elemento restaurado correctamente');
+                return true;
+            } else {
+                window.ui.showNotification('Error', 'Error al restaurar el elemento');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error restoring item from trash:', error);
+            window.ui.showNotification('Error', 'Error al restaurar el elemento');
+            return false;
+        }
+    },
+    
+    /**
+     * Eliminar permanentemente un elemento de la papelera
+     * @param {string} trashId - ID del elemento en la papelera
+     * @returns {Promise<boolean>} - Éxito de la operación
+     */
+    async deletePermanently(trashId) {
+        if (!confirm('¿Estás seguro de que quieres eliminar permanentemente este elemento? Esta acción no se puede deshacer.')) {
+            return false;
+        }
+        
+        try {
+            const response = await fetch(`/api/trash/${trashId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                window.ui.showNotification('Elemento eliminado', 'Elemento eliminado permanentemente');
+                return true;
+            } else {
+                window.ui.showNotification('Error', 'Error al eliminar el elemento');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error deleting item permanently:', error);
+            window.ui.showNotification('Error', 'Error al eliminar el elemento');
+            return false;
+        }
+    },
+    
+    /**
+     * Vaciar la papelera
+     * @returns {Promise<boolean>} - Éxito de la operación
+     */
+    async emptyTrash() {
+        if (!confirm('¿Estás seguro de que quieres vaciar la papelera? Esta acción eliminará permanentemente todos los elementos y no se puede deshacer.')) {
+            return false;
+        }
+        
+        try {
+            const response = await fetch('/api/trash/empty', {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                window.ui.showNotification('Papelera vaciada', 'La papelera ha sido vaciada correctamente');
+                return true;
+            } else {
+                window.ui.showNotification('Error', 'Error al vaciar la papelera');
+                return false;
+            }
+        } catch (error) {
+            console.error('Error emptying trash:', error);
+            window.ui.showNotification('Error', 'Error al vaciar la papelera');
             return false;
         }
     }

@@ -10,11 +10,11 @@ use crate::common::di::AppState;
 use crate::interfaces::middleware::auth::AuthUser;
 
 /// Obtiene todos los elementos en la papelera para el usuario actual
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 pub async fn get_trash_items(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<serde_json::Value>) {
     debug!("Solicitud para listar elementos en papelera para usuario {}", auth_user.id);
     
     let trash_service = match state.trash_service.as_ref() {
@@ -22,7 +22,7 @@ pub async fn get_trash_items(
         None => {
             return (StatusCode::NOT_IMPLEMENTED, Json(json!({
                 "error": "Trash feature is not enabled"
-            }))).into_response();
+            })));
         }
     };
     
@@ -31,24 +31,24 @@ pub async fn get_trash_items(
     match result {
         Ok(items) => {
             debug!("Encontrados {} elementos en la papelera", items.len());
-            (StatusCode::OK, Json(items)).into_response()
+            (StatusCode::OK, Json(json!(items)))
         },
         Err(e) => {
             error!("Error al obtener elementos de la papelera: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": format!("Error retrieving trash items: {}", e)
-            }))).into_response()
+            })))
         }
     }
 }
 
-/// Mueve un elemento (archivo o carpeta) a la papelera
-#[instrument(skip(state))]
+/// Mueve un elemento (archivo o carpeta) a la papelera (función genérica, no usada directamente en rutas)
+#[instrument(skip_all)]
 pub async fn move_to_trash(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path((item_type, item_id)): Path<(String, String)>,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<serde_json::Value>) {
     debug!("Solicitud para mover a papelera: tipo={}, id={}, usuario={}", 
            item_type, item_id, auth_user.id);
     
@@ -57,7 +57,7 @@ pub async fn move_to_trash(
         None => {
             return (StatusCode::NOT_IMPLEMENTED, Json(json!({
                 "error": "Trash feature is not enabled"
-            }))).into_response();
+            })));
         }
     };
     let result = trash_service.move_to_trash(&item_id, &item_type, &auth_user.id).await;
@@ -68,24 +68,102 @@ pub async fn move_to_trash(
             (StatusCode::OK, Json(json!({
                 "success": true,
                 "message": "Item moved to trash successfully"
-            }))).into_response()
+            })))
         },
         Err(e) => {
             error!("Error al mover elemento a papelera: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": format!("Error moving item to trash: {}", e)
-            }))).into_response()
+            })))
+        }
+    }
+}
+
+/// Mueve un archivo a la papelera
+#[instrument(skip_all)]
+pub async fn move_file_to_trash(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(item_id): Path<String>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    debug!("Solicitud para mover archivo a papelera: id={}, usuario={}", 
+           item_id, auth_user.id);
+    
+    let trash_service = match state.trash_service.as_ref() {
+        Some(service) => service,
+        None => {
+            return (StatusCode::NOT_IMPLEMENTED, Json(json!({
+                "error": "Trash feature is not enabled"
+            })));
+        }
+    };
+    
+    // Especificar que es un archivo
+    let result = trash_service.move_to_trash(&item_id, "file", &auth_user.id).await;
+    
+    match result {
+        Ok(_) => {
+            debug!("Archivo movido a papelera con éxito");
+            (StatusCode::OK, Json(json!({
+                "success": true,
+                "message": "File moved to trash successfully"
+            })))
+        },
+        Err(e) => {
+            error!("Error al mover archivo a papelera: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Error moving file to trash: {}", e)
+            })))
+        }
+    }
+}
+
+/// Mueve una carpeta a la papelera
+#[instrument(skip_all)]
+pub async fn move_folder_to_trash(
+    State(state): State<AppState>,
+    auth_user: AuthUser,
+    Path(item_id): Path<String>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    debug!("Solicitud para mover carpeta a papelera: id={}, usuario={}", 
+           item_id, auth_user.id);
+    
+    let trash_service = match state.trash_service.as_ref() {
+        Some(service) => service,
+        None => {
+            return (StatusCode::NOT_IMPLEMENTED, Json(json!({
+                "error": "Trash feature is not enabled"
+            })));
+        }
+    };
+    
+    // Especificar que es una carpeta
+    let result = trash_service.move_to_trash(&item_id, "folder", &auth_user.id).await;
+    
+    match result {
+        Ok(_) => {
+            debug!("Carpeta movida a papelera con éxito");
+            (StatusCode::OK, Json(json!({
+                "success": true,
+                "message": "Folder moved to trash successfully"
+            })))
+        },
+        Err(e) => {
+            error!("Error al mover carpeta a papelera: {:?}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Error moving folder to trash: {}", e)
+            })))
         }
     }
 }
 
 /// Restaura un elemento desde la papelera a su ubicación original
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 pub async fn restore_from_trash(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path(trash_id): Path<String>,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<serde_json::Value>) {
     debug!("Solicitud para restaurar elemento {} de papelera", trash_id);
     
     let trash_service = match state.trash_service.as_ref() {
@@ -93,7 +171,7 @@ pub async fn restore_from_trash(
         None => {
             return (StatusCode::NOT_IMPLEMENTED, Json(json!({
                 "error": "Trash feature is not enabled"
-            }))).into_response();
+            })));
         }
     };
     let result = trash_service.restore_item(&trash_id, &auth_user.id).await;
@@ -104,24 +182,24 @@ pub async fn restore_from_trash(
             (StatusCode::OK, Json(json!({
                 "success": true,
                 "message": "Item restored successfully"
-            }))).into_response()
+            })))
         },
         Err(e) => {
             error!("Error al restaurar elemento de papelera: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": format!("Error restoring item from trash: {}", e)
-            }))).into_response()
+            })))
         }
     }
 }
 
 /// Elimina permanentemente un elemento de la papelera
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 pub async fn delete_permanently(
     State(state): State<AppState>,
     auth_user: AuthUser,
     Path(trash_id): Path<String>,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<serde_json::Value>) {
     debug!("Solicitud para eliminar permanentemente elemento {}", trash_id);
     
     let trash_service = match state.trash_service.as_ref() {
@@ -129,7 +207,7 @@ pub async fn delete_permanently(
         None => {
             return (StatusCode::NOT_IMPLEMENTED, Json(json!({
                 "error": "Trash feature is not enabled"
-            }))).into_response();
+            })));
         }
     };
     let result = trash_service.delete_permanently(&trash_id, &auth_user.id).await;
@@ -140,23 +218,23 @@ pub async fn delete_permanently(
             (StatusCode::OK, Json(json!({
                 "success": true,
                 "message": "Item deleted permanently"
-            }))).into_response()
+            })))
         },
         Err(e) => {
             error!("Error al eliminar permanentemente elemento: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": format!("Error deleting item permanently: {}", e)
-            }))).into_response()
+            })))
         }
     }
 }
 
 /// Vacía la papelera completamente para el usuario actual
-#[instrument(skip(state))]
+#[instrument(skip_all)]
 pub async fn empty_trash(
     State(state): State<AppState>,
     auth_user: AuthUser,
-) -> impl IntoResponse {
+) -> (StatusCode, Json<serde_json::Value>) {
     debug!("Solicitud para vaciar papelera del usuario {}", auth_user.id);
     
     let trash_service = match state.trash_service.as_ref() {
@@ -164,7 +242,7 @@ pub async fn empty_trash(
         None => {
             return (StatusCode::NOT_IMPLEMENTED, Json(json!({
                 "error": "Trash feature is not enabled"
-            }))).into_response();
+            })));
         }
     };
     let result = trash_service.empty_trash(&auth_user.id).await;
@@ -175,13 +253,13 @@ pub async fn empty_trash(
             (StatusCode::OK, Json(json!({
                 "success": true,
                 "message": "Trash emptied successfully"
-            }))).into_response()
+            })))
         },
         Err(e) => {
             error!("Error al vaciar papelera: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
                 "error": format!("Error emptying trash: {}", e)
-            }))).into_response()
+            })))
         }
     }
 }

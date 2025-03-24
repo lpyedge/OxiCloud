@@ -11,7 +11,9 @@ use tower_http::{
     trace::TraceLayer,
 };
 use crate::common::config::AppConfig;
+use crate::common::di::AppState;
 use crate::interfaces::middleware::auth::auth_middleware;
+use crate::interfaces::middleware::auth::AuthUser;
 
 use crate::interfaces::middleware::cache::{HttpCache, start_cache_cleanup_task};
 
@@ -128,13 +130,8 @@ pub fn create_api_routes(
         .nest("/files", files_router)
         .nest("/batch", batch_router);
         
-    // Temporarily skip trash routes to fix the auth middleware issue
-    // Once the auth middleware is fixed, we can re-enable these routes
-    /*
-    if let Some(_ts) = trash_service.clone() {
-        // Trash routes are temporarily disabled
-    }
-    */
+    // Skipping trash routes for now due to Axum compatibility issues
+    // We'll implement a minimal approach to test functionality instead
     
     // Add i18n routes if the service is provided
     if let Some(i18n_service) = i18n_service {

@@ -281,7 +281,7 @@ impl Default for FeaturesConfig {
             enable_auth: true,  // Enable authentication by default
             enable_user_storage_quotas: false,
             enable_file_sharing: false,
-            enable_trash: false,  // Disable trash feature temporarily
+            enable_trash: true,  // Enable trash feature
         }
     }
 }
