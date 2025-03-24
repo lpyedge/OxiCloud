@@ -9,13 +9,17 @@ use crate::application::services::auth_application_service::AuthApplicationServi
 use crate::domain::services::path_service::PathService;
 use crate::infrastructure::repositories::folder_fs_repository::FolderFsRepository;
 use crate::infrastructure::repositories::file_fs_repository::FileFsRepository;
+use crate::infrastructure::repositories::trash_fs_repository::TrashFsRepository;
 use crate::infrastructure::services::file_system_i18n_service::FileSystemI18nService;
 use crate::infrastructure::services::id_mapping_service::IdMappingService;
 use crate::infrastructure::services::cache_manager::StorageCacheManager;
 use crate::infrastructure::services::file_metadata_cache::FileMetadataCache;
+use crate::infrastructure::services::trash_cleanup_service::TrashCleanupService;
 use crate::application::services::folder_service::FolderService;
 use crate::application::services::file_service::FileService;
 use crate::application::services::i18n_application_service::I18nApplicationService;
+use crate::application::services::trash_service::TrashService;
+use crate::application::ports::trash_ports::TrashUseCase;
 use crate::application::services::storage_mediator::{StorageMediator, FileSystemStorageMediator};
 use crate::application::ports::inbound::{FileUseCase, FolderUseCase, UseCaseFactory};
 use crate::application::ports::outbound::{FileStoragePort, FolderStoragePort};
@@ -164,6 +168,16 @@ impl AppServiceFactory {
             self.locales_path.clone()
         ));
         
+        // Trash repository
+        let trash_repository = if core.config.features.enable_trash {
+            Some(Arc::new(TrashFsRepository::new(
+                self.storage_path.as_path(),
+                core.id_mapping_service.clone(),
+            )) as Arc<dyn crate::domain::repositories::trash_repository::TrashRepository>)
+        } else {
+            None
+        };
+        
         RepositoryServices {
             folder_repository,
             file_repository,
@@ -173,6 +187,7 @@ impl AppServiceFactory {
             storage_mediator,
             metadata_manager,
             path_resolver,
+            trash_repository,
         }
     }
     
@@ -211,6 +226,9 @@ impl AppServiceFactory {
             repos.i18n_repository.clone()
         ));
         
+        // Servicio de papelera (deshabilitado temporalmente)
+        let trash_service = None; // La función de papelera está deshabilitada por defecto
+        
         ApplicationServices {
             folder_service,
             file_service,
@@ -219,12 +237,14 @@ impl AppServiceFactory {
             file_management_service,
             file_use_case_factory,
             i18n_service,
+            trash_service,
         }
     }
 }
 
 /// Contenedor para servicios base
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct CoreServices {
     pub path_service: Arc<PathService>,
     pub cache_manager: Arc<StorageCacheManager>,
@@ -234,6 +254,7 @@ pub struct CoreServices {
 
 /// Contenedor para servicios de repositorio
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct RepositoryServices {
     pub folder_repository: Arc<dyn FolderStoragePort>,
     pub file_repository: Arc<dyn FileStoragePort>,
@@ -243,10 +264,12 @@ pub struct RepositoryServices {
     pub storage_mediator: Arc<dyn StorageMediator>,
     pub metadata_manager: Arc<FileMetadataManager>,
     pub path_resolver: Arc<FilePathResolver>,
+    pub trash_repository: Option<Arc<dyn crate::domain::repositories::trash_repository::TrashRepository>>,
 }
 
 /// Contenedor para servicios de aplicación
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct ApplicationServices {
     pub folder_service: Arc<dyn FolderUseCase>,
     pub file_service: Arc<dyn FileUseCase>,
@@ -255,22 +278,26 @@ pub struct ApplicationServices {
     pub file_management_service: Arc<dyn FileManagementUseCase>,
     pub file_use_case_factory: Arc<dyn FileUseCaseFactory>,
     pub i18n_service: Arc<I18nApplicationService>,
+    pub trash_service: Option<Arc<dyn TrashUseCase>>,
 }
 
 /// Contenedor para servicios de autenticación
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct AuthServices {
     pub auth_service: Arc<AuthService>,
     pub auth_application_service: Arc<AuthApplicationService>,
 }
 
 /// Estado global de la aplicación para dependency injection
+#[derive(Clone)]
 pub struct AppState {
     pub core: CoreServices,
     pub repositories: RepositoryServices,
     pub applications: ApplicationServices,
     pub db_pool: Option<Arc<PgPool>>,
     pub auth_service: Option<AuthServices>,
+    pub trash_service: Option<Arc<dyn TrashUseCase>>,
 }
 
 impl Default for AppState {
@@ -719,6 +746,7 @@ impl Default for AppState {
                 storage_mediator.clone(),
                 id_mapping_service.clone()
             )),
+            trash_repository: None, // No trash repository in minimal mode
         };
         
         // Create application services
@@ -730,6 +758,7 @@ impl Default for AppState {
             file_management_service,
             file_use_case_factory,
             i18n_service: Arc::new(DummyI18nApplicationService::dummy()),
+            trash_service: None, // No trash service in minimal mode
         };
         
         // Return a minimal app state
@@ -739,6 +768,7 @@ impl Default for AppState {
             applications: application_services,
             db_pool: None,
             auth_service: None,
+            trash_service: None,
         }
     }
 }
@@ -755,6 +785,7 @@ impl AppState {
             applications,
             db_pool: None,
             auth_service: None,
+            trash_service: None,
         }
     }
     
@@ -765,6 +796,11 @@ impl AppState {
     
     pub fn with_auth_services(mut self, auth_services: AuthServices) -> Self {
         self.auth_service = Some(auth_services);
+        self
+    }
+    
+    pub fn with_trash_service(mut self, trash_service: Arc<dyn TrashUseCase>) -> Self {
+        self.trash_service = Some(trash_service);
         self
     }
 }

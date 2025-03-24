@@ -43,6 +43,11 @@ impl FolderFsRepository {
         }
     }
     
+    /// Returns the root path of the storage
+    pub fn get_root_path(&self) -> &PathBuf {
+        &self.root_path
+    }
+    
     /// Creates a stub repository for initialization purposes
     /// This is used temporarily during dependency injection setup
     #[allow(dead_code)]
@@ -108,6 +113,31 @@ impl FolderFsRepository {
     /// Resolves a legacy PathBuf to an absolute filesystem path
     fn resolve_legacy_path(&self, relative_path: &std::path::Path) -> PathBuf {
         self.storage_mediator.resolve_path(relative_path)
+    }
+    
+    /// Returns a reference to the ID mapping service
+    pub fn id_mapping_service(&self) -> &Arc<dyn crate::application::ports::outbound::IdMappingPort> {
+        &self.id_mapping_service
+    }
+    
+    /// Gets a folder path from the ID mapping service
+    pub async fn get_mapped_folder_path(&self, folder_id: &str) -> FolderRepositoryResult<String> {
+        let storage_path = self.id_mapping_service.get_path_by_id(folder_id).await
+            .map_err(|e| FolderRepositoryError::MappingError(format!("Failed to get folder path: {}", e)))?;
+        Ok(storage_path.to_string())
+    }
+    
+    /// Updates a folder path in the ID mapping service
+    pub async fn update_mapped_folder_path(&self, folder_id: &str, new_path: &PathBuf) -> FolderRepositoryResult<()> {
+        let storage_path = StoragePath::from_string(&new_path.to_string_lossy().to_string());
+        self.id_mapping_service.update_path(folder_id, &storage_path).await
+            .map_err(|e| FolderRepositoryError::MappingError(format!("Failed to update folder path: {}", e)))
+    }
+    
+    /// Removes a folder ID from the ID mapping service
+    pub async fn remove_mapped_folder_id(&self, folder_id: &str) -> FolderRepositoryResult<()> {
+        self.id_mapping_service.remove_id(folder_id).await
+            .map_err(|e| FolderRepositoryError::MappingError(format!("Failed to remove folder ID: {}", e)))
     }
     
     /// Checks if a folder exists at a given storage path
@@ -222,6 +252,9 @@ impl From<FolderRepositoryError> for DomainError {
             FolderRepositoryError::Other(msg) => {
                 DomainError::internal_error("Folder", msg)
             },
+            FolderRepositoryError::OperationNotSupported(msg) => {
+                DomainError::operation_not_supported("Folder", msg)
+            },
             FolderRepositoryError::DomainError(e) => e,
         }
     }
@@ -293,6 +326,24 @@ impl FolderStoragePort for FolderFsRepository {
 
 #[async_trait]
 impl FolderRepository for FolderFsRepository {
+    // Temporary stubs for trash functionality
+    async fn move_to_trash(&self, _folder_id: &str) -> FolderRepositoryResult<()> {
+        Err(FolderRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
+    
+    async fn restore_from_trash(&self, _folder_id: &str, _original_path: &str) -> FolderRepositoryResult<()> {
+        Err(FolderRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
+    
+    async fn delete_folder_permanently(&self, _folder_id: &str) -> FolderRepositoryResult<()> {
+        Err(FolderRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
     async fn create_folder(&self, name: String, parent_id: Option<String>) -> FolderRepositoryResult<Folder> {
         // Get the parent folder path (if any)
         let parent_storage_path = match &parent_id {

@@ -192,6 +192,19 @@ impl FolderRepository for FolderRepositoryStub {
     async fn get_folder_by_path(&self, _path: &std::path::PathBuf) -> Result<Folder, FolderRepositoryError> {
         Err(FolderRepositoryError::Other("Stub repository".to_string()))
     }
+    
+    // Trash functionality stubs
+    async fn move_to_trash(&self, _folder_id: &str) -> Result<(), FolderRepositoryError> {
+        Err(FolderRepositoryError::OperationNotSupported("Trash feature temporarily disabled".to_string()))
+    }
+    
+    async fn restore_from_trash(&self, _folder_id: &str, _original_path: &str) -> Result<(), FolderRepositoryError> {
+        Err(FolderRepositoryError::OperationNotSupported("Trash feature temporarily disabled".to_string()))
+    }
+    
+    async fn delete_folder_permanently(&self, _folder_id: &str) -> Result<(), FolderRepositoryError> {
+        Err(FolderRepositoryError::OperationNotSupported("Trash feature temporarily disabled".to_string()))
+    }
 }
 
 /// Stub implementation for initialization dependency issues

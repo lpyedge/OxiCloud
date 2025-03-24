@@ -16,6 +16,9 @@ pub enum FolderRepositoryError {
     #[error("Invalid folder path: {0}")]
     InvalidPath(String),
     
+    #[error("Operation not supported: {0}")]
+    OperationNotSupported(String),
+    
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
     
@@ -88,4 +91,13 @@ pub trait FolderRepository: Send + Sync + 'static {
     #[deprecated(note = "Use get_folder_by_storage_path instead")]
     #[allow(dead_code)]
     async fn get_folder_by_path(&self, path: &std::path::PathBuf) -> FolderRepositoryResult<Folder>;
+    
+    /// Moves a folder to trash
+    async fn move_to_trash(&self, folder_id: &str) -> FolderRepositoryResult<()>;
+    
+    /// Restores a folder from trash
+    async fn restore_from_trash(&self, folder_id: &str, original_path: &str) -> FolderRepositoryResult<()>;
+    
+    /// Permanently deletes a folder (used for trash cleanup)
+    async fn delete_folder_permanently(&self, folder_id: &str) -> FolderRepositoryResult<()>;
 }

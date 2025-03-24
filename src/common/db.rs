@@ -38,28 +38,52 @@ pub async fn create_database_pool(config: &AppConfig) -> Result<PgPool> {
                             
                             // Simple schema creation - this handles fresh installations
                             let create_tables_result = sqlx::query(r#"
-                                CREATE TABLE IF NOT EXISTS users (
-                                    id TEXT PRIMARY KEY,
-                                    username TEXT UNIQUE NOT NULL,
-                                    email TEXT UNIQUE NOT NULL,
+                                -- Create the auth schema if not exists
+                                CREATE SCHEMA IF NOT EXISTS auth;
+                                
+                                -- Create UserRole enum type if not exists
+                                DO $$ 
+                                BEGIN
+                                    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
+                                        CREATE TYPE auth.userrole AS ENUM ('admin', 'user');
+                                    END IF;
+                                END $$;
+                                
+                                -- Create the auth.users table
+                                CREATE TABLE IF NOT EXISTS auth.users (
+                                    id VARCHAR(36) PRIMARY KEY,
+                                    username VARCHAR(32) NOT NULL UNIQUE,
+                                    email VARCHAR(255) NOT NULL UNIQUE,
                                     password_hash TEXT NOT NULL,
-                                    role TEXT NOT NULL,
-                                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                                    quota_bytes BIGINT NOT NULL DEFAULT 1073741824,
-                                    last_login TIMESTAMP,
-                                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                    role auth.userrole NOT NULL,
+                                    storage_quota_bytes BIGINT NOT NULL,
+                                    storage_used_bytes BIGINT NOT NULL DEFAULT 0,
+                                    created_at TIMESTAMPTZ NOT NULL,
+                                    updated_at TIMESTAMPTZ NOT NULL,
+                                    last_login_at TIMESTAMPTZ,
+                                    active BOOLEAN NOT NULL DEFAULT TRUE
                                 );
                                 
-                                CREATE TABLE IF NOT EXISTS sessions (
-                                    id TEXT PRIMARY KEY,
-                                    user_id TEXT NOT NULL REFERENCES users(id),
-                                    refresh_token TEXT UNIQUE NOT NULL,
-                                    ip_address TEXT,
+                                -- Create an index on username and email for fast lookups
+                                CREATE INDEX IF NOT EXISTS idx_users_username ON auth.users(username);
+                                CREATE INDEX IF NOT EXISTS idx_users_email ON auth.users(email);
+                                
+                                -- Create the sessions table
+                                CREATE TABLE IF NOT EXISTS auth.sessions (
+                                    id VARCHAR(36) PRIMARY KEY,
+                                    user_id VARCHAR(36) NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+                                    refresh_token VARCHAR(255) NOT NULL UNIQUE,
+                                    expires_at TIMESTAMPTZ NOT NULL,
+                                    ip_address VARCHAR(45),
                                     user_agent TEXT,
-                                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                                    expires_at TIMESTAMP NOT NULL,
-                                    is_revoked BOOLEAN NOT NULL DEFAULT FALSE
+                                    created_at TIMESTAMPTZ NOT NULL,
+                                    revoked BOOLEAN NOT NULL DEFAULT FALSE
                                 );
+                                
+                                -- Create indexes on user_id and refresh_token for fast lookups
+                                CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON auth.sessions(user_id);
+                                CREATE INDEX IF NOT EXISTS idx_sessions_refresh_token ON auth.sessions(refresh_token);
+                                CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON auth.sessions(expires_at);
                             "#).execute(&pool).await;
                             
                             match create_tables_result {

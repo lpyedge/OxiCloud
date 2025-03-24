@@ -94,7 +94,7 @@ impl FolderUseCase for FolderService {
         // Crear la carpeta
         let folder = self.folder_storage.create_folder(dto.name, dto.parent_id)
             .await
-            .with_context(|| "Failed to create folder")?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to create folder: {}", e)))?;
         
         // Convertir a DTO
         Ok(FolderDto::from(folder))
@@ -104,7 +104,7 @@ impl FolderUseCase for FolderService {
     async fn get_folder(&self, id: &str) -> Result<FolderDto, DomainError> {
         let folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get folder with ID: {}", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get folder with ID: {}: {}", id, e)))?;
         
         Ok(FolderDto::from(folder))
     }
@@ -116,7 +116,7 @@ impl FolderUseCase for FolderService {
         
         let folder = self.folder_storage.get_folder_by_path(&storage_path)
             .await
-            .with_context(|| format!("Failed to get folder at path: {}", path))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get folder at path: {}: {}", path, e)))?;
         
         Ok(FolderDto::from(folder))
     }
@@ -125,7 +125,7 @@ impl FolderUseCase for FolderService {
     async fn list_folders(&self, parent_id: Option<&str>) -> Result<Vec<FolderDto>, DomainError> {
         let folders = self.folder_storage.list_folders(parent_id)
             .await
-            .with_context(|| format!("Failed to list folders in parent: {:?}", parent_id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to list folders in parent: {:?}: {}", parent_id, e)))?;
         
         // Convertir a DTOs
         Ok(folders.into_iter().map(FolderDto::from).collect())
@@ -148,7 +148,7 @@ impl FolderUseCase for FolderService {
             true // Siempre incluir total para mejor UX
         )
         .await
-        .with_context(|| format!("Failed to list folders with pagination in parent: {:?}", parent_id))?;
+        .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to list folders with pagination in parent: {:?}: {}", parent_id, e)))?;
         
         // El total es necesario para calcular la paginación
         let total = total_items.unwrap_or(folders.len());
@@ -178,7 +178,7 @@ impl FolderUseCase for FolderService {
         // Verificar que la carpeta existe
         let existing_folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get folder with ID: {} for renaming", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get folder with ID: {} for renaming: {}", id, e)))?;
         
         // Crear transacción para renombrar
         let mut transaction = StorageTransaction::new("rename_folder");
@@ -220,7 +220,7 @@ impl FolderUseCase for FolderService {
         // Obtener la carpeta renombrada
         let folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get renamed folder with ID: {}", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get renamed folder with ID: {}: {}", id, e)))?;
         
         Ok(FolderDto::from(folder))
     }
@@ -230,7 +230,7 @@ impl FolderUseCase for FolderService {
         // Verificar que la carpeta origen existe
         let source_folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get folder with ID: {} for moving", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get folder with ID: {} for moving: {}", id, e)))?;
         
         // Si se especifica un parent_id, verificar que existe
         if let Some(parent_id) = &dto.parent_id {
@@ -295,7 +295,7 @@ impl FolderUseCase for FolderService {
         // Obtener la carpeta movida
         let folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get moved folder with ID: {}", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get moved folder with ID: {}: {}", id, e)))?;
         
         Ok(FolderDto::from(folder))
     }
@@ -305,13 +305,13 @@ impl FolderUseCase for FolderService {
         // Verificar que la carpeta existe
         let _folder = self.folder_storage.get_folder(id)
             .await
-            .with_context(|| format!("Failed to get folder with ID: {} for deletion", id))?;
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to get folder with ID: {} for deletion: {}", id, e)))?;
         
         // En una implementación real, podríamos verificar permisos, dependencias, etc.
         
         // Eliminar la carpeta
         self.folder_storage.delete_folder(id)
             .await
-            .with_context(|| format!("Failed to delete folder with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FolderStorage", format!("Failed to delete folder with ID: {}: {}", id, e)))
     }
 }

@@ -264,13 +264,20 @@ async function login(username, password) {
             };
         }
         
+        // Add better error handling with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch(LOGIN_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password }),
+            signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         console.log(`Login response status: ${response.status}`);
         

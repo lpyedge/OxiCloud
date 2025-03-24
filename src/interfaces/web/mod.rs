@@ -10,7 +10,7 @@ use crate::common::di::AppState;
 use crate::common::config::AppConfig;
 
 /// Creates web routes for serving static files
-pub fn create_web_routes() -> Router<Arc<AppState>> {
+pub fn create_web_routes() -> Router<AppState> {
     // Get config to access static path
     let config = AppConfig::from_env();
     let static_path = config.static_path.clone();

@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use uuid::Uuid;
 use crate::domain::entities::file::File;
 use crate::domain::services::path_service::StoragePath;
 use crate::common::errors::DomainError;
@@ -17,6 +18,9 @@ pub enum FileRepositoryError {
     
     #[error("Invalid file path: {0}")]
     InvalidPath(String),
+    
+    #[error("Operation not supported: {0}")]
+    OperationNotSupported(String),
     
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
@@ -90,4 +94,13 @@ pub trait FileRepository: Send + Sync + 'static {
     
     /// Gets the storage path for a file
     async fn get_file_path(&self, id: &str) -> FileRepositoryResult<StoragePath>;
+    
+    /// Moves a file to trash
+    async fn move_to_trash(&self, file_id: &str) -> FileRepositoryResult<()>;
+    
+    /// Restores a file from trash
+    async fn restore_from_trash(&self, file_id: &str, original_path: &str) -> FileRepositoryResult<()>;
+    
+    /// Permanently deletes a file (used for trash cleanup)
+    async fn delete_file_permanently(&self, file_id: &str) -> FileRepositoryResult<()>;
 }

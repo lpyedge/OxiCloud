@@ -27,6 +27,9 @@ use infrastructure::services::file_metadata_cache::FileMetadataCache;
 use infrastructure::services::buffer_pool::BufferPool;
 use infrastructure::services::compression_service::GzipCompressionService;
 use interfaces::{create_api_routes, web::create_web_routes};
+use application::services::trash_service::TrashService;
+use infrastructure::repositories::trash_fs_repository::TrashFsRepository;
+use infrastructure::services::trash_cleanup_service::TrashCleanupService;
 use common::db::create_database_pool;
 use common::auth_factory::create_auth_services;
 use common::di::AppState;
@@ -167,8 +170,243 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ));
 
     // Initialize application services
-    let folder_service = Arc::new(FolderService::new(folder_repository));
-    let file_service = Arc::new(FileService::new(file_repository));
+    let folder_service = Arc::new(FolderService::new(folder_repository.clone()));
+    let file_service = Arc::new(FileService::new(file_repository.clone()));
+    
+    // Initialize trash service if enabled
+    let trash_repository = if config.features.enable_trash {
+        Some(Arc::new(TrashFsRepository::new(
+            storage_path.as_path(),
+            base_id_mapping_service.clone(),
+        )))
+    } else {
+        None
+    };
+    
+    // Create adapters for repositories (using domain interfaces instead of ports)
+    struct DomainFileRepoAdapter {
+        repo: Arc<dyn application::ports::outbound::FileStoragePort>
+    }
+    
+    impl DomainFileRepoAdapter {
+        fn new(repo: Arc<dyn application::ports::outbound::FileStoragePort>) -> Self {
+            Self { repo }
+        }
+    }
+    
+    #[async_trait::async_trait]
+    impl domain::repositories::file_repository::FileRepository for DomainFileRepoAdapter {
+        async fn save_file_from_bytes(
+            &self,
+            name: String,
+            folder_id: Option<String>,
+            content_type: String,
+            content: Vec<u8>,
+        ) -> domain::repositories::file_repository::FileRepositoryResult<domain::entities::file::File> {
+            self.repo.save_file(name, folder_id, content_type, content)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn save_file_with_id(
+            &self,
+            id: String,
+            name: String,
+            folder_id: Option<String>,
+            content_type: String,
+            content: Vec<u8>,
+        ) -> domain::repositories::file_repository::FileRepositoryResult<domain::entities::file::File> {
+            Err(domain::repositories::file_repository::FileRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn get_file_by_id(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<domain::entities::file::File> {
+            self.repo.get_file(id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn list_files(&self, folder_id: Option<&str>) -> domain::repositories::file_repository::FileRepositoryResult<Vec<domain::entities::file::File>> {
+            self.repo.list_files(folder_id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn delete_file(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
+            self.repo.delete_file(id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn delete_file_entry(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
+            self.delete_file(id).await
+        }
+        
+        async fn get_file_content(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<Vec<u8>> {
+            self.repo.get_file_content(id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn get_file_stream(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<Box<dyn futures::Stream<Item = Result<bytes::Bytes, std::io::Error>> + Send>> {
+            self.repo.get_file_stream(id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn move_file(&self, id: &str, target_folder_id: Option<String>) -> domain::repositories::file_repository::FileRepositoryResult<domain::entities::file::File> {
+            self.repo.move_file(id, target_folder_id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn get_file_path(&self, id: &str) -> domain::repositories::file_repository::FileRepositoryResult<domain::services::path_service::StoragePath> {
+            self.repo.get_file_path(id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn move_to_trash(&self, file_id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
+            Err(domain::repositories::file_repository::FileRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn restore_from_trash(&self, file_id: &str, original_path: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
+            Err(domain::repositories::file_repository::FileRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn delete_file_permanently(&self, file_id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
+            self.delete_file(file_id).await
+        }
+    }
+    
+    struct DomainFolderRepoAdapter {
+        repo: Arc<dyn application::ports::outbound::FolderStoragePort>
+    }
+    
+    impl DomainFolderRepoAdapter {
+        fn new(repo: Arc<dyn application::ports::outbound::FolderStoragePort>) -> Self {
+            Self { repo }
+        }
+    }
+    
+    #[async_trait::async_trait]
+    impl domain::repositories::folder_repository::FolderRepository for DomainFolderRepoAdapter {
+        async fn create_folder(&self, name: String, parent_id: Option<String>) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            self.repo.create_folder(name, parent_id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn get_folder_by_id(&self, id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            self.repo.get_folder(id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn get_folder_by_storage_path(&self, storage_path: &domain::services::path_service::StoragePath) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            self.repo.get_folder_by_path(storage_path)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn list_folders(&self, parent_id: Option<&str>) -> domain::repositories::folder_repository::FolderRepositoryResult<Vec<domain::entities::folder::Folder>> {
+            self.repo.list_folders(parent_id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn list_folders_paginated(
+            &self, 
+            parent_id: Option<&str>, 
+            offset: usize, 
+            limit: usize,
+            include_total: bool
+        ) -> domain::repositories::folder_repository::FolderRepositoryResult<(Vec<domain::entities::folder::Folder>, Option<usize>)> {
+            self.repo.list_folders_paginated(parent_id, offset, limit, include_total)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn rename_folder(&self, id: &str, new_name: String) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            self.repo.rename_folder(id, new_name)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn move_folder(&self, id: &str, new_parent_id: Option<&str>) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            self.repo.move_folder(id, new_parent_id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn delete_folder(&self, id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
+            self.repo.delete_folder(id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn folder_exists_at_storage_path(&self, storage_path: &domain::services::path_service::StoragePath) -> domain::repositories::folder_repository::FolderRepositoryResult<bool> {
+            self.repo.folder_exists(storage_path)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn get_folder_storage_path(&self, id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::services::path_service::StoragePath> {
+            self.repo.get_folder_path(id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
+        }
+        
+        async fn folder_exists(&self, path: &std::path::PathBuf) -> domain::repositories::folder_repository::FolderRepositoryResult<bool> {
+            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn get_folder_by_path(&self, path: &std::path::PathBuf) -> domain::repositories::folder_repository::FolderRepositoryResult<domain::entities::folder::Folder> {
+            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn move_to_trash(&self, folder_id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
+            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn restore_from_trash(&self, folder_id: &str, original_path: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
+            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+        }
+        
+        async fn delete_folder_permanently(&self, folder_id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
+            self.delete_folder(folder_id).await
+        }
+    }
+    
+    // Create repository adapters
+    let file_repo_adapter = Arc::new(DomainFileRepoAdapter::new(file_repository.clone()));
+    let folder_repo_adapter = Arc::new(DomainFolderRepoAdapter::new(folder_repository.clone()));
+    
+    // Create the trash service with properly typed adapters
+    let trash_service = if let Some(ref trash_repo) = trash_repository {
+        let service = Arc::new(TrashService::new(
+            trash_repo.clone(),
+            file_repo_adapter,
+            folder_repo_adapter,
+            config.storage.trash_retention_days,
+        ));
+        
+        // Initialize trash cleanup service
+        let cleanup_service = TrashCleanupService::new(
+            service.clone(),
+            trash_repo.clone(),
+            24, // Run cleanup every 24 hours
+        );
+        
+        // Start cleanup job if trash is enabled
+        if config.features.enable_trash {
+            cleanup_service.start_cleanup_job().await;
+            tracing::info!("Trash cleanup service started with daily schedule");
+        }
+        
+        Some(service as Arc<dyn application::ports::trash_ports::TrashUseCase>)
+    } else {
+        None
+    };
     
     // Initialize i18n service
     let i18n_repository = Arc::new(FileSystemI18nService::new(locales_path.clone()));
@@ -219,7 +457,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let metadata_manager = Arc::new(infrastructure::repositories::FileMetadataManager::default());
     let path_resolver_stub = Arc::new(infrastructure::repositories::FilePathResolver::default_stub());
     
-    let repository_services = common::di::RepositoryServices {
+    let mut repository_services = common::di::RepositoryServices {
         folder_repository: Arc::new(FolderFsRepository::new(
             storage_path.clone(),
             storage_mediator_stub.clone(),
@@ -239,6 +477,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         storage_mediator: storage_mediator_stub,
         metadata_manager,
         path_resolver: path_resolver_stub,
+        trash_repository: trash_repository.clone().map(|repo| {
+            // Convert Arc<TrashFsRepository> to Arc<dyn TrashRepository>
+            let repo: Arc<dyn crate::domain::repositories::trash_repository::TrashRepository> = repo;
+            repo
+        }),
     };
     
     let application_services = common::di::ApplicationServices {
@@ -249,6 +492,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         file_management_service: Arc::new(application::services::file_management_service::FileManagementService::default_stub()),
         file_use_case_factory: Arc::new(application::services::file_use_case_factory::AppFileUseCaseFactory::default_stub()),
         i18n_service: i18n_service.clone(),
+        trash_service: trash_service.clone(),
     };
     
     // Create the AppState without Arc first
@@ -273,7 +517,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(app_state);
 
     // Build application router
-    let api_routes = create_api_routes(folder_service, file_service, Some(i18n_service));
+    let api_routes = create_api_routes(folder_service, file_service, Some(i18n_service), trash_service);
     let web_routes = create_web_routes();
     
     // Build the app router
@@ -319,9 +563,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("Server binding to http://{}", addr);
     tracing::info!("Starting server with Axum routes...");
     
-    // For Axum 0.8, we need to properly handle state
+    // Axum 0.8 requires the state to match the expected type
+    // Extract the state from Arc so we can pass it to the router
+    let app_state_inner = Arc::try_unwrap(app_state)
+        .unwrap_or_else(|arc| (*arc).clone());
+    
     // Add global state to the router
-    let app = app.with_state(app_state);
+    let app = app.with_state(app_state_inner);
     
     // Use axum's serve function with the router with state
     axum::serve(listener, app).await?;

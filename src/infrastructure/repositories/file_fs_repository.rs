@@ -91,6 +91,21 @@ impl FileFsRepository {
         self.storage_mediator.resolve_path(relative_path)
     }
     
+    /// Returns a reference to the ID mapping service
+    pub fn id_mapping_service(&self) -> &Arc<dyn crate::application::ports::outbound::IdMappingPort> {
+        &self.id_mapping_service
+    }
+    
+    /// Returns a reference to the metadata cache
+    pub fn metadata_cache(&self) -> &Arc<FileMetadataCache> {
+        &self.metadata_cache
+    }
+    
+    /// Returns a reference to the root path
+    pub fn get_root_path(&self) -> &PathBuf {
+        &self.root_path
+    }
+    
     /// Checks if a file exists at a given storage path
     async fn file_exists_at_storage_path(&self, storage_path: &StoragePath) -> FileRepositoryResult<bool> {
         let abs_path = self.resolve_storage_path(storage_path);
@@ -153,7 +168,7 @@ impl FileFsRepository {
     
     /// Legacy method for checking file existence with PathBuf
     #[allow(dead_code)]
-    async fn file_exists(&self, path: &std::path::Path) -> FileRepositoryResult<bool> {
+    pub async fn file_exists(&self, path: &std::path::Path) -> FileRepositoryResult<bool> {
         let abs_path = self.resolve_legacy_path(path);
         
         // Intentar obtener del caché avanzado primero
@@ -388,37 +403,37 @@ impl FileStoragePort for FileFsRepository {
     ) -> Result<File, DomainError> {
         self.save_file_from_bytes(name, folder_id, content_type, content)
             .await
-            .with_context(|| "Failed to save file")
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to save file: {}", e)))
     }
     
     async fn get_file(&self, id: &str) -> Result<File, DomainError> {
         self.get_file_by_id(id)
             .await
-            .with_context(|| format!("Failed to get file with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to get file with ID: {}: {}", id, e)))
     }
     
     async fn list_files(&self, folder_id: Option<&str>) -> Result<Vec<File>, DomainError> {
         FileRepository::list_files(self, folder_id)
             .await
-            .with_context(|| format!("Failed to list files in folder: {:?}", folder_id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to list files in folder: {:?}: {}", folder_id, e)))
     }
     
     async fn delete_file(&self, id: &str) -> Result<(), DomainError> {
         FileRepository::delete_file(self, id)
             .await
-            .with_context(|| format!("Failed to delete file with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to delete file with ID: {}: {}", id, e)))
     }
     
     async fn get_file_content(&self, id: &str) -> Result<Vec<u8>, DomainError> {
         FileRepository::get_file_content(self, id)
             .await
-            .with_context(|| format!("Failed to get content for file with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to get content for file with ID: {}: {}", id, e)))
     }
     
     async fn get_file_stream(&self, id: &str) -> Result<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>, DomainError> {
         FileRepository::get_file_stream(self, id)
             .await
-            .with_context(|| format!("Failed to get stream for file with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to get stream for file with ID: {}: {}", id, e)))
     }
     
     async fn move_file(&self, file_id: &str, target_folder_id: Option<String>) -> Result<File, DomainError> {
@@ -427,18 +442,36 @@ impl FileStoragePort for FileFsRepository {
         let result = FileRepository::move_file(self, file_id, target_folder_id)
             .await;
             
-        result.with_context(|| format!("Failed to move file with ID: {} to folder: {:?}", file_id, cloned_target))
+        result.map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to move file with ID: {} to folder: {:?}: {}", file_id, cloned_target, e)))
     }
     
     async fn get_file_path(&self, id: &str) -> Result<StoragePath, DomainError> {
         FileRepository::get_file_path(self, id)
             .await
-            .with_context(|| format!("Failed to get path for file with ID: {}", id))
+            .map_err(|e| DomainError::internal_error("FileStorage", format!("Failed to get path for file with ID: {}: {}", id, e)))
     }
 }
 
 #[async_trait]
 impl FileRepository for FileFsRepository {
+    // Temporary stubs for trash functionality
+    async fn move_to_trash(&self, _file_id: &str) -> FileRepositoryResult<()> {
+        Err(FileRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
+    
+    async fn restore_from_trash(&self, _file_id: &str, _original_path: &str) -> FileRepositoryResult<()> {
+        Err(FileRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
+    
+    async fn delete_file_permanently(&self, _file_id: &str) -> FileRepositoryResult<()> {
+        Err(FileRepositoryError::OperationNotSupported(
+            "Trash feature temporarily disabled".to_string()
+        ))
+    }
     async fn save_file_from_bytes(
         &self,
         name: String,

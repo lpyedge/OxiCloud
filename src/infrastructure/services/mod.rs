@@ -5,3 +5,4 @@ pub mod cache_manager;
 pub mod file_metadata_cache;
 pub mod compression_service;
 pub mod buffer_pool;
+pub mod trash_cleanup_service;

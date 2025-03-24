@@ -46,6 +46,10 @@ impl UserRepository for UserPgRepository {
     /// Crea un nuevo usuario
     async fn create_user(&self, user: User) -> UserRepositoryResult<User> {
         // Usamos los getters para extraer los valores
+        // Convertimos user.role() a string para pasarlo como texto plano
+        let role_str = user.role().to_string();
+        
+        // Modificar el SQL para hacer un cast explícito al tipo auth.userrole
         let result = sqlx::query(
             r#"
             INSERT INTO auth.users (
@@ -53,7 +57,7 @@ impl UserRepository for UserPgRepository {
                 storage_quota_bytes, storage_used_bytes, 
                 created_at, updated_at, last_login_at, active
             ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+                $1, $2, $3, $4, $5::auth.userrole, $6, $7, $8, $9, $10, $11
             )
             RETURNING *
             "#
@@ -62,7 +66,7 @@ impl UserRepository for UserPgRepository {
         .bind(user.username())
         .bind(user.email())
         .bind(user.password_hash())
-        .bind(user.role() as UserRole) // sqlx::Type nos permite bind directamente
+        .bind(&role_str) // Convertir a string pero con cast explícito en SQL
         .bind(user.storage_quota_bytes())
         .bind(user.storage_used_bytes())
         .bind(user.created_at())
@@ -93,12 +97,19 @@ impl UserRepository for UserPgRepository {
         .await
         .map_err(Self::map_sqlx_error)?;
 
+        // Convert role string to UserRole enum
+        let role_str: String = row.get("role");
+        let role = match role_str.as_str() {
+            "admin" => UserRole::Admin,
+            _ => UserRole::User,
+        };
+        
         Ok(User::from_data(
             row.get("id"),
             row.get("username"),
             row.get("email"),
             row.get("password_hash"),
-            row.get("role"),
+            role,
             row.get("storage_quota_bytes"),
             row.get("storage_used_bytes"),
             row.get("created_at"),
@@ -125,12 +136,19 @@ impl UserRepository for UserPgRepository {
         .await
         .map_err(Self::map_sqlx_error)?;
 
+        // Convert role string to UserRole enum
+        let role_str: String = row.get("role");
+        let role = match role_str.as_str() {
+            "admin" => UserRole::Admin,
+            _ => UserRole::User,
+        };
+        
         Ok(User::from_data(
             row.get("id"),
             row.get("username"),
             row.get("email"),
             row.get("password_hash"),
-            row.get("role"),
+            role,
             row.get("storage_quota_bytes"),
             row.get("storage_used_bytes"),
             row.get("created_at"),
@@ -157,12 +175,19 @@ impl UserRepository for UserPgRepository {
         .await
         .map_err(Self::map_sqlx_error)?;
 
+        // Convert role string to UserRole enum
+        let role_str: String = row.get("role");
+        let role = match role_str.as_str() {
+            "admin" => UserRole::Admin,
+            _ => UserRole::User,
+        };
+        
         Ok(User::from_data(
             row.get("id"),
             row.get("username"),
             row.get("email"),
             row.get("password_hash"),
-            row.get("role"),
+            role,
             row.get("storage_quota_bytes"),
             row.get("storage_used_bytes"),
             row.get("created_at"),
@@ -181,7 +206,7 @@ impl UserRepository for UserPgRepository {
                 username = $2,
                 email = $3,
                 password_hash = $4,
-                role = $5,
+                role = $5::auth.userrole,
                 storage_quota_bytes = $6,
                 storage_used_bytes = $7,
                 updated_at = $8,
@@ -194,7 +219,7 @@ impl UserRepository for UserPgRepository {
         .bind(user.username())
         .bind(user.email())
         .bind(user.password_hash())
-        .bind(user.role() as UserRole)
+        .bind(&user.role().to_string()) // Esto no usa el cast explícito porque el SQL ya lo tiene
         .bind(user.storage_quota_bytes())
         .bind(user.storage_used_bytes())
         .bind(user.updated_at())
@@ -267,12 +292,19 @@ impl UserRepository for UserPgRepository {
 
         let users = rows.into_iter()
             .map(|row| {
+                // Convert role string to UserRole enum for each row
+                let role_str: String = row.get("role");
+                let role = match role_str.as_str() {
+                    "admin" => UserRole::Admin,
+                    _ => UserRole::User,
+                };
+                
                 User::from_data(
                     row.get("id"),
                     row.get("username"),
                     row.get("email"),
                     row.get("password_hash"),
-                    row.get("role"),
+                    role,
                     row.get("storage_quota_bytes"),
                     row.get("storage_used_bytes"),
                     row.get("created_at"),
@@ -328,17 +360,20 @@ impl UserRepository for UserPgRepository {
     
     /// Cambia el rol de un usuario
     async fn change_role(&self, user_id: &str, role: UserRole) -> UserRepositoryResult<()> {
+        // Convertir el rol a string para el binding
+        let role_str = role.to_string();
+        
         sqlx::query(
             r#"
             UPDATE auth.users
             SET 
-                role = $2,
+                role = $2::auth.userrole,
                 updated_at = NOW()
             WHERE id = $1
             "#
         )
         .bind(user_id)
-        .bind(role as UserRole)
+        .bind(&role_str)
         .execute(&*self.pool)
         .await
         .map_err(Self::map_sqlx_error)?;
