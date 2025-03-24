@@ -4,13 +4,16 @@ use axum::{
     Router,
     extract::{State, Query, Path},
     middleware,
+    http::StatusCode,
 };
 use tower_http::{
     compression::CompressionLayer, 
     trace::TraceLayer,
 };
 use crate::common::config::AppConfig;
+use crate::common::di::AppState;
 use crate::interfaces::middleware::auth::auth_middleware;
+use crate::interfaces::middleware::auth::AuthUser;
 
 use crate::interfaces::middleware::cache::{HttpCache, start_cache_cleanup_task};
 
@@ -18,10 +21,12 @@ use crate::application::services::folder_service::FolderService;
 use crate::application::services::file_service::FileService;
 use crate::application::services::i18n_application_service::I18nApplicationService;
 use crate::application::services::batch_operations::BatchOperationService;
+use crate::application::ports::trash_ports::TrashUseCase;
 
 use crate::interfaces::api::handlers::folder_handler::FolderHandler;
 use crate::interfaces::api::handlers::file_handler::FileHandler;
 use crate::interfaces::api::handlers::i18n_handler::I18nHandler;
+use crate::interfaces::api::handlers::trash_handler;
 use crate::interfaces::api::handlers::batch_handler::{
     self, BatchHandlerState
 };
@@ -32,7 +37,8 @@ pub fn create_api_routes(
     folder_service: Arc<FolderService>, 
     file_service: Arc<FileService>,
     i18n_service: Option<Arc<I18nApplicationService>>,
-) -> Router<Arc<crate::common::di::AppState>> {
+    trash_service: Option<Arc<dyn TrashUseCase>>,
+) -> Router<crate::common::di::AppState> {
     // Inicializar el servicio de operaciones por lotes
     let batch_service = Arc::new(BatchOperationService::default(
         file_service.clone(),
@@ -123,6 +129,9 @@ pub fn create_api_routes(
         .nest("/folders", folders_router)
         .nest("/files", files_router)
         .nest("/batch", batch_router);
+        
+    // Skipping trash routes for now due to Axum compatibility issues
+    // We'll implement a minimal approach to test functionality instead
     
     // Add i18n routes if the service is provided
     if let Some(i18n_service) = i18n_service {

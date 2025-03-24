@@ -1,5 +1,17 @@
 -- Fix the missing UserRole enum type
-CREATE TYPE auth.userrole AS ENUM ('admin', 'user');
+DO $$
+BEGIN
+    -- Check if the type already exists
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_type t
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE t.typname = 'userrole' AND n.nspname = 'auth'
+    ) THEN
+        -- Create the type if it doesn't exist
+        CREATE TYPE auth.userrole AS ENUM ('admin', 'user');
+    END IF;
+END
+$$;
 
 -- If the table already exists but has a different role column type, 
 -- we need to update it to use the new enum type

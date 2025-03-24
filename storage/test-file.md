@@ -1,1 +1,0 @@
-Este es un archivo de prueba para verificar el sistema de archivos de OxiCloud.

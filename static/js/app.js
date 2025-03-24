@@ -12,6 +12,8 @@ const app = {
     contextMenuTargetFile: null,    // Target file for context menu
     selectedTargetFolderId: "",     // Selected target folder for move operations
     moveDialogMode: 'file',         // Move dialog mode: 'file' or 'folder'
+    isTrashView: false,    // Whether we're in trash view
+    currentSection: 'files', // Current section: 'files' or 'trash'
 };
 
 // DOM elements
@@ -62,6 +64,10 @@ function cacheElements() {
     elements.listViewBtn = document.getElementById('list-view-btn');
     elements.breadcrumb = document.querySelector('.breadcrumb');
     elements.logoutBtn = document.getElementById('logout-btn');
+    elements.pageTitle = document.querySelector('.page-title');
+    elements.actionsBar = document.querySelector('.actions-bar');
+    elements.navItems = document.querySelectorAll('.nav-item');
+    elements.trashBtn = document.querySelector('.nav-item:nth-child(5)'); // The trash nav item
 }
 
 /**
@@ -97,6 +103,99 @@ function setupEventListeners() {
     // View toggle
     elements.gridViewBtn.addEventListener('click', ui.switchToGridView);
     elements.listViewBtn.addEventListener('click', ui.switchToListView);
+    
+    // Sidebar navigation
+    elements.navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            // Remove active class from all nav items
+            elements.navItems.forEach(navItem => navItem.classList.remove('active'));
+            
+            // Add active class to clicked item
+            item.classList.add('active');
+            
+            // Check if this is the trash item
+            if (item === elements.trashBtn) {
+                // Show trash view
+                app.isTrashView = true;
+                app.currentSection = 'trash';
+                
+                // Update UI
+                elements.pageTitle.textContent = window.i18n ? window.i18n.t('nav.trash') : 'Papelera';
+                elements.actionsBar.innerHTML = `
+                    <div class="action-buttons">
+                        <button class="btn btn-danger" id="empty-trash-btn">
+                            <i class="fas fa-trash" style="margin-right: 5px;"></i> 
+                            <span>${window.i18n ? window.i18n.t('trash.empty_trash') : 'Vaciar papelera'}</span>
+                        </button>
+                    </div>
+                `;
+                
+                // Add event listener to empty trash button
+                document.getElementById('empty-trash-btn').addEventListener('click', async () => {
+                    if (await fileOps.emptyTrash()) {
+                        loadTrashItems();
+                    }
+                });
+                
+                // Load trash items
+                loadTrashItems();
+            } else {
+                // Show regular files view
+                app.isTrashView = false;
+                app.currentSection = 'files';
+                
+                // Reset UI
+                elements.pageTitle.textContent = window.i18n ? window.i18n.t('nav.files') : 'Archivos';
+                elements.actionsBar.innerHTML = `
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" id="upload-btn">
+                            <i class="fas fa-upload" style="margin-right: 5px;"></i> <span data-i18n="actions.upload">Subir</span>
+                        </button>
+                        <button class="btn btn-secondary" id="new-folder-btn">
+                            <i class="fas fa-folder-plus" style="margin-right: 5px;"></i> <span data-i18n="actions.new_folder">Nueva carpeta</span>
+                        </button>
+                    </div>
+                    <div class="view-toggle">
+                        <button class="toggle-btn active" id="grid-view-btn" title="Vista de cuadrícula">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button class="toggle-btn" id="list-view-btn" title="Vista de lista">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Restore event listeners
+                document.getElementById('upload-btn').addEventListener('click', () => {
+                    elements.dropzone.style.display = elements.dropzone.style.display === 'none' ? 'block' : 'none';
+                    if (elements.dropzone.style.display === 'block') {
+                        elements.fileInput.click();
+                    }
+                });
+                
+                document.getElementById('new-folder-btn').addEventListener('click', () => {
+                    const folderName = prompt(window.i18n ? window.i18n.t('dialogs.new_name') : 'Nombre de la carpeta:');
+                    if (folderName) {
+                        fileOps.createFolder(folderName);
+                    }
+                });
+                
+                document.getElementById('grid-view-btn').addEventListener('click', ui.switchToGridView);
+                document.getElementById('list-view-btn').addEventListener('click', ui.switchToListView);
+                
+                // Restore cached elements
+                elements.uploadBtn = document.getElementById('upload-btn');
+                elements.newFolderBtn = document.getElementById('new-folder-btn');
+                elements.gridViewBtn = document.getElementById('grid-view-btn');
+                elements.listViewBtn = document.getElementById('list-view-btn');
+                
+                // Load regular files
+                app.currentPath = '';
+                ui.updateBreadcrumb('');
+                loadFiles();
+            }
+        });
+    });
     
     // Load saved view preference
     const savedView = localStorage.getItem('oxicloud-view');
@@ -218,9 +317,158 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+/**
+ * Load trash items 
+ */
+async function loadTrashItems() {
+    try {
+        // Clear existing content
+        elements.filesGrid.innerHTML = '';
+        elements.filesListView.innerHTML = `
+            <div class="list-header">
+                <div data-i18n="files.name">Nombre</div>
+                <div data-i18n="files.type">Tipo</div>
+                <div data-i18n="files.original_location">Ubicación original</div>
+                <div data-i18n="files.deleted_date">Fecha eliminación</div>
+                <div data-i18n="files.actions">Acciones</div>
+            </div>
+        `;
+        
+        // Update breadcrumb for trash
+        ui.updateBreadcrumb(window.i18n ? window.i18n.t('nav.trash') : 'Papelera');
+        
+        // Get trash items
+        const trashItems = await fileOps.getTrashItems();
+        
+        if (trashItems.length === 0) {
+            // Show empty state
+            const emptyState = document.createElement('div');
+            emptyState.className = 'empty-state';
+            emptyState.innerHTML = `
+                <i class="fas fa-trash" style="font-size: 48px; color: #ddd; margin-bottom: 16px;"></i>
+                <p>${window.i18n ? window.i18n.t('trash.empty_state') : 'La papelera está vacía'}</p>
+            `;
+            elements.filesGrid.appendChild(emptyState);
+            return;
+        }
+        
+        // Process each trash item
+        trashItems.forEach(item => {
+            addTrashItemToView(item);
+        });
+        
+    } catch (error) {
+        console.error('Error loading trash items:', error);
+        window.ui.showNotification('Error', 'Error al cargar elementos de la papelera');
+    }
+}
+
+/**
+ * Add a trash item to the view
+ * @param {Object} item - Trash item object
+ */
+function addTrashItemToView(item) {
+    const isFile = item.item_type === 'file';
+    const iconClass = isFile ? 'fas fa-file' : 'fas fa-folder';
+    
+    // Format date
+    const deletedDate = new Date(item.deleted_at * 1000);
+    const formattedDate = deletedDate.toLocaleDateString() + ' ' +
+                         deletedDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                         
+    // Item type label
+    const typeLabel = isFile ? 
+        (window.i18n ? window.i18n.t('files.file_types.file') : 'Archivo') :
+        (window.i18n ? window.i18n.t('files.file_types.folder') : 'Carpeta');
+    
+    // Grid view element
+    const gridElement = document.createElement('div');
+    gridElement.className = 'file-card trash-item';
+    gridElement.dataset.trashId = item.id;
+    gridElement.dataset.originalId = item.original_id;
+    gridElement.dataset.itemType = item.item_type;
+    gridElement.innerHTML = `
+        <div class="file-icon">
+            <i class="${iconClass}"></i>
+        </div>
+        <div class="file-name">${item.name}</div>
+        <div class="file-info">${typeLabel} - ${formattedDate}</div>
+        <div class="trash-actions">
+            <button class="btn-restore" title="Restaurar">
+                <i class="fas fa-undo"></i>
+            </button>
+            <button class="btn-delete" title="Eliminar permanentemente">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    // Add action buttons event listeners
+    gridElement.querySelector('.btn-restore').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (await fileOps.restoreFromTrash(item.id)) {
+            loadTrashItems();
+        }
+    });
+    
+    gridElement.querySelector('.btn-delete').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (await fileOps.deletePermanently(item.id)) {
+            loadTrashItems();
+        }
+    });
+    
+    elements.filesGrid.appendChild(gridElement);
+    
+    // List view element
+    const listElement = document.createElement('div');
+    listElement.className = 'file-item trash-item';
+    listElement.dataset.trashId = item.id;
+    listElement.dataset.originalId = item.original_id;
+    listElement.dataset.itemType = item.item_type;
+    
+    listElement.innerHTML = `
+        <div class="name-cell">
+            <div class="file-icon">
+                <i class="${iconClass}"></i>
+            </div>
+            <span>${item.name}</span>
+        </div>
+        <div class="type-cell">${typeLabel}</div>
+        <div class="path-cell">${item.original_path || '--'}</div>
+        <div class="date-cell">${formattedDate}</div>
+        <div class="actions-cell">
+            <button class="btn-restore" title="Restaurar">
+                <i class="fas fa-undo"></i>
+            </button>
+            <button class="btn-delete" title="Eliminar permanentemente">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    // Add action buttons event listeners for list view
+    listElement.querySelector('.btn-restore').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (await fileOps.restoreFromTrash(item.id)) {
+            loadTrashItems();
+        }
+    });
+    
+    listElement.querySelector('.btn-delete').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (await fileOps.deletePermanently(item.id)) {
+            loadTrashItems();
+        }
+    });
+    
+    elements.filesListView.appendChild(listElement);
+}
+
 // Expose needed functions to global scope
 window.app = app;
 window.loadFiles = loadFiles;
+window.loadTrashItems = loadTrashItems;
 window.formatFileSize = formatFileSize;
 
 // Set up global selectFolder function for navigation

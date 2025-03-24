@@ -22,8 +22,8 @@ pub enum UserError {
 
 pub type UserResult<T> = Result<T, UserError>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(rename_all = "lowercase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+// We'll handle conversion manually for now until the type is properly set up in the database
 pub enum UserRole {
     Admin,
     User,

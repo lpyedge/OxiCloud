@@ -82,6 +82,14 @@ impl AuthService {
     pub fn generate_access_token(&self, user: &User) -> Result<String, AuthError> {
         let now = Utc::now().timestamp();
         
+        // Log information for debugging
+        tracing::debug!(
+            "Generating token for user: {}, id: {}, role: {}", 
+            user.username(), 
+            user.id(), 
+            user.role()
+        );
+        
         let claims = TokenClaims {
             sub: user.id().to_string(),
             exp: now + self.access_token_expiry,
@@ -92,12 +100,23 @@ impl AuthService {
             role: format!("{}", user.role()),
         };
         
-        encode(
+        // Log JWT claims for debugging
+        tracing::debug!("JWT claims: sub={}, exp={}, iat={}", claims.sub, claims.exp, claims.iat);
+        
+        match encode(
             &Header::default(),
             &claims,
             &EncodingKey::from_secret(self.jwt_secret.as_bytes())
-        )
-        .map_err(|e| AuthError::InternalError(format!("Error al generar token: {}", e)))
+        ) {
+            Ok(token) => {
+                tracing::debug!("Token generated successfully, length: {}", token.len());
+                Ok(token)
+            },
+            Err(e) => {
+                tracing::error!("Error generating token: {}", e);
+                Err(AuthError::InternalError(format!("Error al generar token: {}", e)))
+            }
+        }
     }
     
     pub fn generate_refresh_token(&self) -> String {

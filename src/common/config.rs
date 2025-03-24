@@ -195,6 +195,30 @@ impl Default for ConcurrencyConfig {
     }
 }
 
+/// Configuración de almacenamiento
+#[derive(Debug, Clone)]
+pub struct StorageConfig {
+    /// Directorio raíz para el almacenamiento
+    pub root_dir: String,
+    /// Tamaño de chunk para procesamiento de archivos
+    pub chunk_size: usize,
+    /// Umbral para procesamiento paralelo
+    pub parallel_threshold: usize,
+    /// Días de retención para archivos en la papelera
+    pub trash_retention_days: u32,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self {
+            root_dir: "storage".to_string(),
+            chunk_size: 1024 * 1024,      // 1 MB
+            parallel_threshold: 100 * 1024 * 1024, // 100 MB
+            trash_retention_days: 30,     // 30 días
+        }
+    }
+}
+
 /// Configuración de base de datos
 #[derive(Debug, Clone)]
 pub struct DatabaseConfig {
@@ -210,7 +234,7 @@ impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
             // Updated connection string with default credentials that PostgreSQL often uses
-            connection_string: "postgres://postgres:postgres@localhost:5432/postgres".to_string(),
+            connection_string: "postgres://postgres:postgres@localhost:5432/oxicloud".to_string(),
             max_connections: 20,
             min_connections: 5,
             connect_timeout_secs: 10,
@@ -248,6 +272,7 @@ pub struct FeaturesConfig {
     pub enable_auth: bool,
     pub enable_user_storage_quotas: bool,
     pub enable_file_sharing: bool,
+    pub enable_trash: bool,
 }
 
 impl Default for FeaturesConfig {
@@ -256,6 +281,7 @@ impl Default for FeaturesConfig {
             enable_auth: true,  // Enable authentication by default
             enable_user_storage_quotas: false,
             enable_file_sharing: false,
+            enable_trash: true,  // Enable trash feature
         }
     }
 }
@@ -279,6 +305,8 @@ pub struct AppConfig {
     pub resources: ResourceConfig,
     /// Configuración de concurrencia
     pub concurrency: ConcurrencyConfig,
+    /// Configuración de almacenamiento
+    pub storage: StorageConfig,
     /// Configuración de base de datos
     pub database: DatabaseConfig,
     /// Configuración de autenticación
@@ -298,6 +326,7 @@ impl Default for AppConfig {
             timeouts: TimeoutConfig::default(),
             resources: ResourceConfig::default(),
             concurrency: ConcurrencyConfig::default(),
+            storage: StorageConfig::default(),
             database: DatabaseConfig::default(),
             auth: AuthConfig::default(),
             features: FeaturesConfig::default(),

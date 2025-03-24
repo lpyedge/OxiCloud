@@ -115,9 +115,9 @@ impl IdMappingService {
                 timeouts.lock_timeout(),
                 fs::read_to_string(map_path)
             ).await
-            .with_context(|| format!("Timeout reading ID map from {}", map_path.display()))?;
+            .map_err(|_| DomainError::timeout("IdMapping", format!("Timeout reading ID map from {}", map_path.display())))?;
             
-            let content = read_result.with_context(|| format!("Failed to read ID map from {}", map_path.display()))?;
+            let content = read_result.map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to read ID map from {}: {}", map_path.display(), e)))?;
             
             // Parsear el JSON
             match serde_json::from_str::<IdMap>(&content) {
@@ -197,7 +197,7 @@ impl IdMappingService {
             self.timeouts.lock_timeout(),
             self.save_mutex.lock()
         ).await
-        .with_context(|| "Timeout acquiring save lock for ID mapping")?;
+        .map_err(|_| DomainError::timeout("IdMapping", "Timeout acquiring save lock for ID mapping"))?;
         
         // Crear JSON con el lock de lectura para minimizar el tiempo de bloqueo
         let json = {
@@ -205,7 +205,7 @@ impl IdMappingService {
                 self.timeouts.lock_timeout(),
                 self.id_map.write()
             ).await
-            .with_context(|| "Timeout acquiring write lock for ID mapping")?;
+            .map_err(|_| DomainError::timeout("IdMapping", "Timeout acquiring write lock for ID mapping"))?;
             
             // Incrementar versión sólo si hay cambios por guardar
             let pending = *self.pending_save.read().await;
@@ -216,17 +216,17 @@ impl IdMappingService {
             
             // Use serde with reasonably safe defaults
             serde_json::to_string_pretty(&*map)
-                .with_context(|| "Failed to serialize ID map to JSON")?
+                .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to serialize ID map to JSON: {}", e)))?
         };
         
         // Escribir a un archivo temporal primero para evitar corrupción
         let temp_path = self.map_path.with_extension("json.tmp");
         fs::write(&temp_path, &json).await
-            .with_context(|| format!("Failed to write temporary ID map to {}", temp_path.display()))?;
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to write temporary ID map to {}: {}", temp_path.display(), e)))?;
         
         // Realizar el rename atómico
         fs::rename(&temp_path, &self.map_path).await
-            .with_context(|| format!("Failed to rename temporary ID map to {}", self.map_path.display()))?;
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to rename temporary ID map to {}: {}", self.map_path.display(), e)))?;
         
         // Resetear flag de pendientes
         {
@@ -408,33 +408,35 @@ impl IdMappingPort for IdMappingService {
     /// Obtiene el ID para una ruta o genera uno nuevo si no existe
     async fn get_or_create_id(&self, path: &StoragePath) -> Result<String, DomainError> {
         self.get_or_create_id(path).await
-            .with_context(|| format!("Failed to get or create ID for path: {}", path.to_string()))
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to get or create ID for path: {}: {}", path.to_string(), e)))
     }
     
     /// Obtiene una ruta por su ID con manejo de timeout
     async fn get_path_by_id(&self, id: &str) -> Result<StoragePath, DomainError> {
         self.get_path_by_id(id).await
-            .with_context(|| format!("Failed to get path for ID: {}", id))
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to get path for ID: {}: {}", id, e)))
     }
     
     /// Actualiza el mapeo de un ID existente a una nueva ruta
     async fn update_path(&self, id: &str, new_path: &StoragePath) -> Result<(), DomainError> {
         self.update_path(id, new_path).await
-            .with_context(|| format!("Failed to update path for ID: {} to {}", id, new_path.to_string()))
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to update path for ID: {} to {}: {}", id, new_path.to_string(), e)))
     }
     
     /// Elimina un ID del mapa
     async fn remove_id(&self, id: &str) -> Result<(), DomainError> {
         self.remove_id(id).await
-            .with_context(|| format!("Failed to remove ID: {}", id))
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to remove ID: {}: {}", id, e)))
     }
     
     /// Guarda cambios pendientes al disco
     async fn save_changes(&self) -> Result<(), DomainError> {
         self.save_pending_changes().await
-            .with_context(|| "Failed to save pending ID mapping changes")
+            .map_err(|e| DomainError::internal_error("IdMapping", format!("Failed to save pending ID mapping changes: {}", e)))
     }
 }
+
+// The extension methods were moved to the IdMappingPort trait as default implementations
 
 // Implementar Clone para poder usar en tokio::spawn
 /// Synchronous helper for contexts where we can't use async

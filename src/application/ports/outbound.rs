@@ -115,4 +115,16 @@ pub trait IdMappingPort: Send + Sync + 'static {
     
     /// Guarda cambios pendientes
     async fn save_changes(&self) -> Result<(), DomainError>;
+    
+    /// Obtiene la ruta de archivo como PathBuf
+    async fn get_file_path(&self, file_id: &str) -> Result<PathBuf, DomainError> {
+        let storage_path = self.get_path_by_id(file_id).await?;
+        Ok(PathBuf::from(storage_path.to_string()))
+    }
+    
+    /// Actualiza la ruta de un archivo
+    async fn update_file_path(&self, file_id: &str, new_path: &PathBuf) -> Result<(), DomainError> {
+        let storage_path = StoragePath::from_string(&new_path.to_string_lossy().to_string());
+        self.update_path(file_id, &storage_path).await
+    }
 }

@@ -2,6 +2,9 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::error::Error as StdError;
 use thiserror::Error;
 
+/// Tipo Result común para la aplicación con DomainError como error estándar
+pub type Result<T> = std::result::Result<T, DomainError>;
+
 /// Tipos de errores comunes en toda la aplicación
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorKind {
@@ -19,6 +22,8 @@ pub enum ErrorKind {
     InternalError,
     /// Funcionalidad no implementada
     NotImplemented,
+    /// Operación no soportada
+    UnsupportedOperation,
 }
 
 impl Display for ErrorKind {
@@ -31,6 +36,7 @@ impl Display for ErrorKind {
             ErrorKind::Timeout => write!(f, "Timeout"),
             ErrorKind::InternalError => write!(f, "Internal Error"),
             ErrorKind::NotImplemented => write!(f, "Not Implemented"),
+            ErrorKind::UnsupportedOperation => write!(f, "Unsupported Operation"),
         }
     }
 }
@@ -90,6 +96,15 @@ impl DomainError {
             message: format!("{} already exists: {}", entity_type, id),
             source: None,
         }
+    }
+
+    /// Crea un error para operaciones no soportadas
+    pub fn operation_not_supported<S: Into<String>>(entity_type: &'static str, message: S) -> Self {
+        Self::new(
+            ErrorKind::UnsupportedOperation,
+            entity_type,
+            message,
+        )
     }
 
     /// Crea un error de tiempo agotado
@@ -163,17 +178,17 @@ impl DomainError {
 
 /// Trait para añadir contexto a los errores
 pub trait ErrorContext<T, E> {
-    fn with_context<C, F>(self, context: F) -> Result<T, DomainError>
+    fn with_context<C, F>(self, context: F) -> std::result::Result<T, DomainError>
     where
         C: Into<String>,
         F: FnOnce() -> C;
 
     #[allow(dead_code)]
-    fn with_error_kind(self, kind: ErrorKind, entity_type: &'static str) -> Result<T, DomainError>;
+    fn with_error_kind(self, kind: ErrorKind, entity_type: &'static str) -> std::result::Result<T, DomainError>;
 }
 
-impl<T, E: StdError + Send + Sync + 'static> ErrorContext<T, E> for Result<T, E> {
-    fn with_context<C, F>(self, context: F) -> Result<T, DomainError>
+impl<T, E: StdError + Send + Sync + 'static> ErrorContext<T, E> for std::result::Result<T, E> {
+    fn with_context<C, F>(self, context: F) -> std::result::Result<T, DomainError>
     where
         C: Into<String>,
         F: FnOnce() -> C,
@@ -189,7 +204,7 @@ impl<T, E: StdError + Send + Sync + 'static> ErrorContext<T, E> for Result<T, E>
         })
     }
 
-    fn with_error_kind(self, kind: ErrorKind, entity_type: &'static str) -> Result<T, DomainError> {
+    fn with_error_kind(self, kind: ErrorKind, entity_type: &'static str) -> std::result::Result<T, DomainError> {
         self.map_err(|e| {
             DomainError {
                 kind,
@@ -280,6 +295,7 @@ impl From<DomainError> for AppError {
             ErrorKind::Timeout => axum::http::StatusCode::REQUEST_TIMEOUT,
             ErrorKind::InternalError => axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             ErrorKind::NotImplemented => axum::http::StatusCode::NOT_IMPLEMENTED,
+            ErrorKind::UnsupportedOperation => axum::http::StatusCode::METHOD_NOT_ALLOWED,
         };
         
         Self {
