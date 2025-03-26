@@ -43,3 +43,10 @@ hyper = { version = "1.2.0", features = ["full"] }
 default = []
 test_utils = ["mockall"]
 
+[profile.release]
+lto = "thin"
+codegen-units = 1
+opt-level = 3
+panic = "abort"
+strip = true
+
