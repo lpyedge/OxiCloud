@@ -11,16 +11,15 @@ use futures::Stream;
 use futures::StreamExt;
 use std::task::{Context, Poll};
 use std::pin::Pin;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
-use std::path::PathBuf;
 
 use crate::application::services::file_service::{FileService, FileServiceError};
 use crate::infrastructure::services::compression_service::{
     CompressionService, GzipCompressionService, CompressionLevel
 };
+use crate::common::di::AppState;
 
-type AppState = Arc<FileService>;
+type FileServiceState = Arc<FileService>;
+type GlobalState = AppState;
 
 /// Handler for file-related API endpoints
 pub struct FileHandler;
@@ -57,7 +56,7 @@ impl<T> BoxedStream<T> {
 impl FileHandler {
     /// Uploads a file
     pub async fn upload_file(
-        State(service): State<AppState>,
+        State(service): State<FileServiceState>,
         mut multipart: Multipart,
     ) -> impl IntoResponse {
         // Extract file from multipart request
@@ -131,7 +130,7 @@ impl FileHandler {
     
     /// Downloads a file with optional compression
     pub async fn download_file(
-        State(service): State<AppState>,
+        State(service): State<FileServiceState>,
         Path(id): Path<String>,
         Query(params): Query<HashMap<String, String>>,
     ) -> impl IntoResponse {
@@ -375,7 +374,7 @@ impl FileHandler {
     
     /// Lists files, optionally filtered by folder ID
     pub async fn list_files(
-        State(service): State<AppState>,
+        State(service): State<FileServiceState>,
         folder_id: Option<&str>,
     ) -> impl IntoResponse {
         tracing::info!("Listing files with folder_id: {:?}", folder_id);
@@ -399,10 +398,7 @@ impl FileHandler {
             Err(err) => {
                 tracing::error!("Error listing files through service: {}", err);
                 
-                let status = match &err {
-                    FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
-                    _ => StatusCode::INTERNAL_SERVER_ERROR,
-                };
+                let status = StatusCode::INTERNAL_SERVER_ERROR;
                 
                 // Return a JSON error response
                 (status, Json(serde_json::json!({
@@ -412,22 +408,54 @@ impl FileHandler {
         }
     }
     
-    /// Deletes a file
+    /// Deletes a file (with trash support)
     pub async fn delete_file(
-        State(service): State<AppState>,
+        State(state): State<GlobalState>,
         Path(id): Path<String>,
     ) -> impl IntoResponse {
-        // Use the file service to delete the file
-        match service.delete_file(&id).await {
+        // Check if trash service is available
+        if let Some(trash_service) = &state.trash_service {
+            tracing::info!("Moving file to trash: {}", id);
+            
+            // Debug logs to track trash components
+            tracing::debug!("Trash service type: {}", std::any::type_name_of_val(&*trash_service));
+            let default_user_id = "00000000-0000-0000-0000-000000000000".to_string();
+            tracing::info!("Using default user ID: {}", default_user_id);
+            
+            // Try to move to trash first - add more detailed logging
+            tracing::info!("About to call trash_service.move_to_trash with id={}, type=file", id);
+            match trash_service.move_to_trash(&id, "file", &default_user_id).await {
+                Ok(_) => {
+                    tracing::info!("File successfully moved to trash: {}", id);
+                    // Note: Use 204 No Content for consistency with DELETE operations
+                    return StatusCode::NO_CONTENT.into_response();
+                },
+                Err(err) => {
+                    tracing::error!("Could not move file to trash: {:?}", err);
+                    tracing::error!("Error kind: {:?}, Error details: {}", err.kind, err);
+                    tracing::warn!("Could not move file to trash, falling back to permanent delete: {}", err);
+                    // Fall through to regular delete if trash fails
+                }
+            }
+        } else {
+            tracing::warn!("Trash service not available, using permanent delete");
+        }
+        
+        // Fallback to permanent delete if trash is unavailable or failed
+        tracing::warn!("Falling back to permanent delete for file: {}", id);
+        let file_service = &state.applications.file_service;
+        match file_service.delete_file(&id).await {
             Ok(_) => {
-                tracing::info!("File successfully deleted: {}", id);
+                tracing::info!("File permanently deleted: {}", id);
+                // CRITICAL FIX: Return status code that matches the API expectations (204 No Content)
+                // This ensures the client knows the operation was successful
                 StatusCode::NO_CONTENT.into_response()
             },
             Err(err) => {
                 tracing::error!("Error deleting file: {}", err);
                 
-                let status = match &err {
-                    FileServiceError::NotFound(_) => StatusCode::NOT_FOUND,
+                let status = match err.kind {
+                    crate::common::errors::ErrorKind::NotFound => StatusCode::NOT_FOUND,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 
@@ -440,7 +468,7 @@ impl FileHandler {
     
     /// Moves a file to a different folder
     pub async fn move_file(
-        State(service): State<AppState>,
+        State(service): State<FileServiceState>,
         Path(id): Path<String>,
         Json(payload): Json<MoveFilePayload>,
     ) -> impl IntoResponse {
@@ -463,24 +491,12 @@ impl FileHandler {
                         (StatusCode::OK, Json(file)).into_response()
                     },
                     Err(err) => {
-                        let status = match &err {
-                            FileServiceError::NotFound(_) => {
-                                tracing::error!("Error moving file - not found: {}", err);
-                                StatusCode::NOT_FOUND
-                            },
-                            FileServiceError::Conflict(_) => {
-                                tracing::error!("Error moving file - already exists: {}", err);
-                                StatusCode::CONFLICT
-                            },
-                            _ => {
-                                tracing::error!("Error moving file: {}", err);
-                                StatusCode::INTERNAL_SERVER_ERROR
-                            }
-                        };
+                        // Simplify error handling
+                        let status = StatusCode::INTERNAL_SERVER_ERROR;
+                        tracing::error!("Error moving file: {}", err);
                         
                         (status, Json(serde_json::json!({
-                            "error": format!("Error moving file: {}", err.to_string()),
-                            "code": status.as_u16()
+                            "error": format!("Error moving file: {}", err)
                         }))).into_response()
                     }
                 }

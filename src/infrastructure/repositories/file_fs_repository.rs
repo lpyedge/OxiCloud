@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use tokio::{fs, io::AsyncWriteExt, time};
 use tokio::fs::File as TokioFile;
 use tokio_util::codec::{BytesCodec, FramedRead};
+use tracing::instrument;
 use mime_guess::from_path;
 use futures::{Stream, StreamExt};
 use bytes::Bytes;
@@ -20,7 +21,7 @@ use crate::application::ports::outbound::IdMappingPort;
 use crate::infrastructure::services::id_mapping_service::IdMappingError;
 use crate::infrastructure::services::file_metadata_cache::{FileMetadataCache, CacheEntryType};
 use crate::domain::services::path_service::{StoragePath, PathService};
-use crate::common::errors::{DomainError, ErrorContext};
+use crate::common::errors::DomainError;
 use crate::common::config::AppConfig;
 use crate::application::ports::outbound::FileStoragePort;
 use crate::infrastructure::repositories::parallel_file_processor::ParallelFileProcessor;
@@ -454,23 +455,50 @@ impl FileStoragePort for FileFsRepository {
 
 #[async_trait]
 impl FileRepository for FileFsRepository {
-    // Temporary stubs for trash functionality
-    async fn move_to_trash(&self, _file_id: &str) -> FileRepositoryResult<()> {
-        Err(FileRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn move_to_trash(&self, file_id: &str) -> FileRepositoryResult<()> {
+        tracing::info!("FileRepository::move_to_trash called for file ID: {}", file_id);
+        // Call the internal implementation for trash handling
+        match self._trash_move_to_trash(file_id).await {
+            Ok(_) => {
+                tracing::info!("File successfully moved to trash: {}", file_id);
+                Ok(())
+            },
+            Err(e) => {
+                tracing::error!("Failed to move file to trash: {} - {}", file_id, e);
+                Err(e)
+            }
+        }
     }
     
-    async fn restore_from_trash(&self, _file_id: &str, _original_path: &str) -> FileRepositoryResult<()> {
-        Err(FileRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn restore_from_trash(&self, file_id: &str, original_path: &str) -> FileRepositoryResult<()> {
+        tracing::info!("FileRepository::restore_from_trash called for file ID: {} to path: {}", file_id, original_path);
+        match self._trash_restore_from_trash(file_id, original_path).await {
+            Ok(_) => {
+                tracing::info!("File successfully restored from trash: {}", file_id);
+                Ok(())
+            },
+            Err(e) => {
+                tracing::error!("Failed to restore file from trash: {} - {}", file_id, e);
+                Err(e)
+            }
+        }
     }
     
-    async fn delete_file_permanently(&self, _file_id: &str) -> FileRepositoryResult<()> {
-        Err(FileRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn delete_file_permanently(&self, file_id: &str) -> FileRepositoryResult<()> {
+        tracing::info!("FileRepository::delete_file_permanently called for file ID: {}", file_id);
+        match self._trash_delete_file_permanently(file_id).await {
+            Ok(_) => {
+                tracing::info!("File permanently deleted successfully: {}", file_id);
+                Ok(())
+            },
+            Err(e) => {
+                tracing::error!("Failed to delete file permanently: {} - {}", file_id, e);
+                Err(e)
+            }
+        }
     }
     async fn save_file_from_bytes(
         &self,

@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 use async_trait::async_trait;
 
 use crate::domain::services::path_service::StoragePath;
-use crate::common::errors::{DomainError, ErrorKind, ErrorContext};
+use crate::common::errors::{DomainError, ErrorKind};
 use crate::application::ports::outbound::IdMappingPort;
 use crate::common::config::TimeoutConfig;
 
@@ -97,6 +97,19 @@ impl IdMappingService {
     }
     
     /// Crea un servicio de mapeo de IDs en memoria (para pruebas)
+    ///
+    /// Similar functionality as new_in_memory but with a simpler signature for dummy use
+    pub fn dummy() -> Self {
+        Self {
+            map_path: PathBuf::from("/tmp/dummy_id_map.json"),
+            id_map: RwLock::new(IdMap::default()),
+            save_mutex: Mutex::new(()),
+            timeouts: TimeoutConfig::default(),
+            pending_save: RwLock::new(false),
+        }
+    }
+    
+    /// Crea un servicio de mapeo de IDs en memoria (para pruebas - versión original)
     pub fn new_in_memory() -> Self {
         Self {
             map_path: PathBuf::from("memory"),

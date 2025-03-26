@@ -4,8 +4,6 @@ use axum::{
     response::Html,
 };
 use tower_http::services::ServeDir;
-use std::path::PathBuf;
-use std::sync::Arc;
 use crate::common::di::AppState;
 use crate::common::config::AppConfig;
 

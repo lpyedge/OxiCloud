@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use uuid::Uuid;
 use crate::domain::entities::file::File;
 use crate::domain::services::path_service::StoragePath;
 use crate::common::errors::DomainError;

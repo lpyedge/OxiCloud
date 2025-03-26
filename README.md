@@ -17,6 +17,7 @@ I built OxiCloud because I wanted a simpler, faster file storage solution than e
 - **Lightweight**: Minimal resource requirements compared to PHP-based alternatives
 - **Responsive UI**: Clean, fast interface that works well on both desktop and mobile
 - **Rust Performance**: Built with Rust for memory safety and speed
+- **Optimized Binary**: Uses Link Time Optimization (LTO) for maximum performance
 - **Simple Setup**: Get running with minimal configuration
 - **Multilingual**: Full support for English and Spanish interfaces
 
@@ -68,9 +69,14 @@ cargo build                 # Build the project
 cargo run                   # Run the project locally
 cargo check                 # Quick check for compilation errors
 
+# Optimized builds
+cargo build --release       # Build with full optimization (LTO enabled)
+cargo run --release         # Run optimized build
+
 # Testing
 cargo test                  # Run all tests
 cargo test <test_name>      # Run a specific test
+cargo bench                 # Run benchmarks with optimized settings
 
 # Code quality
 cargo clippy                # Run linter

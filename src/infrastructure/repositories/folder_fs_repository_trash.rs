@@ -1,11 +1,8 @@
 use std::path::PathBuf;
-use std::sync::Arc;
 use tokio::fs;
-use async_trait::async_trait;
-use tracing::{debug, error, instrument};
+use tracing::{debug, error};
 
-use crate::domain::repositories::folder_repository::{FolderRepository, FolderRepositoryResult};
-use crate::common::errors::ErrorKind;
+use crate::domain::repositories::folder_repository::FolderRepositoryResult;
 use crate::infrastructure::repositories::folder_fs_repository::FolderFsRepository;
 
 // Este archivo contiene la implementación de los métodos relacionados con la papelera
@@ -37,8 +34,7 @@ impl FolderFsRepository {
 // Implementation of internal methods for trash functionality
 // These will be enabled when the trash feature is re-enabled
 impl FolderFsRepository {
-    /// Helper method that will be used for trash functionality 
-    #[allow(dead_code)]
+    /// Helper method that will be used for trash functionality
     pub(crate) async fn _trash_move_to_trash(&self, folder_id: &str) -> FolderRepositoryResult<()> {
         debug!("Moviendo carpeta a la papelera: {}", folder_id);
         
@@ -82,7 +78,6 @@ impl FolderFsRepository {
     }
     
     /// Restaura una carpeta desde la papelera a su ubicación original
-    #[allow(dead_code)]
     pub(crate) async fn _trash_restore_from_trash(&self, folder_id: &str, original_path: &str) -> FolderRepositoryResult<()> {
         debug!("Restaurando carpeta {} a {}", folder_id, original_path);
         
@@ -130,7 +125,6 @@ impl FolderFsRepository {
     }
     
     /// Elimina una carpeta permanentemente (usado por la papelera)
-    #[allow(dead_code)]
     pub(crate) async fn _trash_delete_folder_permanently(&self, folder_id: &str) -> FolderRepositoryResult<()> {
         debug!("Eliminando carpeta permanentemente: {}", folder_id);
         

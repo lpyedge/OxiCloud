@@ -8,6 +8,32 @@ pub struct I18nApplicationService {
 }
 
 impl I18nApplicationService {
+    /// Creates a dummy service for testing
+    pub fn dummy() -> Self {
+        struct DummyI18nService;
+        
+        #[async_trait::async_trait]
+        impl I18nService for DummyI18nService {
+            async fn translate(&self, _key: &str, _locale: Locale) -> I18nResult<String> {
+                Ok("DUMMY_TRANSLATION".to_string())
+            }
+            
+            async fn load_translations(&self, _locale: Locale) -> I18nResult<()> {
+                Ok(())
+            }
+            
+            async fn available_locales(&self) -> Vec<Locale> {
+                vec![Locale::English, Locale::Spanish]
+            }
+            
+            async fn is_supported(&self, _locale: Locale) -> bool {
+                true
+            }
+        }
+        
+        Self { i18n_service: Arc::new(DummyI18nService) }
+    }
+    
     /// Creates a new i18n application service
     pub fn new(i18n_service: Arc<dyn I18nService>) -> Self {
         Self { i18n_service }

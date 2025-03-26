@@ -7,8 +7,8 @@ use crate::application::dtos::trash_dto::TrashedItemDto;
 use crate::application::ports::trash_ports::TrashUseCase;
 use crate::common::errors::{Result, DomainError, ErrorKind};
 use crate::domain::entities::trashed_item::{TrashedItem, TrashedItemType};
-use crate::domain::repositories::file_repository::{FileRepository, FileRepositoryResult};
-use crate::domain::repositories::folder_repository::{FolderRepository, FolderRepositoryResult};
+use crate::domain::repositories::file_repository::FileRepository;
+use crate::domain::repositories::folder_repository::FolderRepository;
 use crate::domain::repositories::trash_repository::TrashRepository;
 
 /// Servicio de aplicación para operaciones de papelera
@@ -84,28 +84,64 @@ impl TrashUseCase for TrashService {
     #[instrument(skip(self))]
     async fn move_to_trash(&self, item_id: &str, item_type: &str, user_id: &str) -> Result<()> {
         info!("Moviendo a papelera: tipo={}, id={}, usuario={}", item_type, item_id, user_id);
+        debug!("User UUID validation: {}", user_id);
         
+        // Validate user ownership
+        debug!("Validando permisos de usuario");
         self.validate_user_ownership(item_id, user_id).await?;
+        debug!("Permisos de usuario validados");
         
-        let item_uuid = Uuid::parse_str(item_id)
-            .map_err(|e| DomainError::validation_error("Item", format!("Invalid item ID: {}", e)))?;
-            
-        let user_uuid = Uuid::parse_str(user_id)
-            .map_err(|e| DomainError::validation_error("User", format!("Invalid user ID: {}", e)))?;
+        // Parse UUIDs with detailed error handling
+        debug!("Validando UUID del item: {}", item_id);
+        let item_uuid = match Uuid::parse_str(item_id) {
+            Ok(uuid) => {
+                debug!("UUID del item válido: {}", uuid);
+                uuid
+            },
+            Err(e) => {
+                error!("UUID del item inválido: {} - Error: {}", item_id, e);
+                return Err(DomainError::validation_error("Item", format!("Invalid item ID: {}", e)));
+            }
+        };
+        
+        debug!("Validando UUID del usuario: {}", user_id);
+        let user_uuid = match Uuid::parse_str(user_id) {
+            Ok(uuid) => {
+                debug!("UUID del usuario válido: {}", uuid);
+                uuid
+            },
+            Err(e) => {
+                error!("UUID del usuario inválido: {} - Error: {}", user_id, e);
+                return Err(DomainError::validation_error("User", format!("Invalid user ID: {}", e)));
+            }
+        };
         
         match item_type {
             "file" => {
+                info!("Procesando archivo para mover a papelera: {}", item_id);
+                
                 // Obtener el archivo para verificar que existe y capturar sus datos
-                let file = self.file_repository.get_file_by_id(item_id).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::NotFound,
-                        "File",
-                        format!("Error retrieving file {}: {}", item_id, e)
-                    ))?;
+                debug!("Obteniendo datos del archivo: {}", item_id);
+                let file = match self.file_repository.get_file_by_id(item_id).await {
+                    Ok(file) => {
+                        debug!("Archivo encontrado: {} ({})", file.name(), item_id);
+                        file
+                    },
+                    Err(e) => {
+                        error!("Error al obtener archivo: {} - {}", item_id, e);
+                        return Err(DomainError::new(
+                            ErrorKind::NotFound,
+                            "File",
+                            format!("Error retrieving file {}: {}", item_id, e)
+                        ));
+                    }
+                };
                 
                 let original_path = file.storage_path().to_string();
+                debug!("Ruta original del archivo: {}", original_path);
                 
                 // Crear el elemento de papelera
+                debug!("Creando objeto TrashedItem para el archivo");
                 let trashed_item = TrashedItem::new(
                     item_uuid,
                     user_uuid,
@@ -114,19 +150,37 @@ impl TrashUseCase for TrashService {
                     original_path,
                     self.retention_days,
                 );
+                debug!("TrashedItem creado con éxito: {} -> {}", file.name(), trashed_item.id);
                 
                 // Primero añadimos a la papelera para registrar el elemento
-                self.trash_repository.add_to_trash(&trashed_item).await?;
+                info!("Añadiendo archivo {} a índice de papelera", item_id);
+                match self.trash_repository.add_to_trash(&trashed_item).await {
+                    Ok(_) => {
+                        debug!("Archivo añadido al índice de papelera con éxito");
+                    },
+                    Err(e) => {
+                        error!("Error al añadir archivo al índice de papelera: {}", e);
+                        return Err(DomainError::internal_error("TrashRepository", format!("Failed to add file to trash: {}", e)));
+                    }
+                };
                 
                 // Luego movemos el archivo físicamente a la papelera
-                self.file_repository.move_to_trash(item_id).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::InternalError,
-                        "File",
-                        format!("Error moving file {} to trash: {}", item_id, e)
-                    ))?;
+                info!("Moviendo archivo físicamente a la papelera: {}", item_id);
+                match self.file_repository.move_to_trash(item_id).await {
+                    Ok(_) => {
+                        debug!("Archivo movido físicamente a papelera con éxito: {}", item_id);
+                    },
+                    Err(e) => {
+                        error!("Error al mover archivo físicamente a papelera: {} - {}", item_id, e);
+                        return Err(DomainError::new(
+                            ErrorKind::InternalError,
+                            "File",
+                            format!("Error moving file {} to trash: {}", item_id, e)
+                        ));
+                    }
+                }
                 
-                debug!("Archivo movido a papelera: {}", item_id);
+                info!("Archivo movido a papelera completamente: {}", item_id);
                 Ok(())
             },
             "folder" => {
@@ -151,7 +205,14 @@ impl TrashUseCase for TrashService {
                 );
                 
                 // Primero añadimos a la papelera para registrar el elemento
-                self.trash_repository.add_to_trash(&trashed_item).await?;
+                debug!("Adding folder {} to trash repository", item_id);
+                match self.trash_repository.add_to_trash(&trashed_item).await {
+                    Ok(_) => debug!("Successfully added folder to trash repository"),
+                    Err(e) => {
+                        error!("Failed to add folder to trash repository: {}", e);
+                        return Err(DomainError::internal_error("TrashRepository", format!("Failed to add folder to trash: {}", e)));
+                    }
+                };
                 
                 // Luego movemos la carpeta físicamente a la papelera
                 self.folder_repository.move_to_trash(item_id).await
@@ -172,92 +233,247 @@ impl TrashUseCase for TrashService {
     async fn restore_item(&self, trash_id: &str, user_id: &str) -> Result<()> {
         info!("Restaurando elemento {} para usuario {}", trash_id, user_id);
         
-        let trash_uuid = Uuid::parse_str(trash_id)
-            .map_err(|e| DomainError::validation_error("Trash", format!("Invalid trash ID: {}", e)))?;
+        let trash_uuid = match Uuid::parse_str(trash_id) {
+            Ok(id) => {
+                info!("Trash UUID parsed successfully: {}", id);
+                id
+            },
+            Err(e) => {
+                error!("Invalid trash ID format: {} - {}", trash_id, e);
+                return Err(DomainError::validation_error("Trash", format!("Invalid trash ID: {}", e)));
+            }
+        };
             
-        let user_uuid = Uuid::parse_str(user_id)
-            .map_err(|e| DomainError::validation_error("User", format!("Invalid user ID: {}", e)))?;
+        let user_uuid = match Uuid::parse_str(user_id) {
+            Ok(id) => {
+                info!("User UUID parsed successfully: {}", id);
+                id
+            },
+            Err(e) => {
+                error!("Invalid user ID format: {} - {}", user_id, e);
+                return Err(DomainError::validation_error("User", format!("Invalid user ID: {}", e)));
+            }
+        };
         
         // Obtener el elemento de la papelera
-        let item = self.trash_repository.get_trash_item(&trash_uuid, &user_uuid).await?
-            .ok_or_else(|| DomainError::not_found("TrashedItem", trash_id.to_string()))?;
+        info!("Retrieving trash item from repository: ID={}", trash_id);
+        let item_result = self.trash_repository.get_trash_item(&trash_uuid, &user_uuid).await;
         
-        // Restaurar según tipo
-        match item.item_type {
-            TrashedItemType::File => {
-                // Restaurar el archivo a su ubicación original
-                let file_id = item.original_id.to_string();
-                self.file_repository.restore_from_trash(&file_id, &item.original_path).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::InternalError,
-                        "File",
-                        format!("Error restoring file {} from trash: {}", file_id, e)
-                    ))?;
-                debug!("Archivo restaurado desde papelera: {}", file_id);
+        match item_result {
+            Ok(Some(item)) => {
+                info!("Found item in trash: ID={}, Type={:?}, OriginalID={}", 
+                    trash_id, item.item_type, item.original_id);
+                
+                // Restaurar según tipo
+                match item.item_type {
+                    TrashedItemType::File => {
+                        // Restaurar el archivo a su ubicación original
+                        let file_id = item.original_id.to_string();
+                        let original_path = item.original_path.clone();
+                        
+                        info!("Restoring file from trash: ID={}, OriginalPath={}", file_id, original_path);
+                        match self.file_repository.restore_from_trash(&file_id, &original_path).await {
+                            Ok(_) => {
+                                info!("Successfully restored file from trash: {}", file_id);
+                            },
+                            Err(e) => {
+                                // Check if the error is because the file is not found
+                                if format!("{}", e).contains("not found") {
+                                    info!("File not found in trash, may already have been restored: {}", file_id);
+                                    // We continue so we can clean up the trash entry
+                                } else {
+                                    // Return error for other kinds of errors
+                                    error!("Error restoring file from trash: {} - {}", file_id, e);
+                                    return Err(DomainError::new(
+                                        ErrorKind::InternalError,
+                                        "File",
+                                        format!("Error restoring file {} from trash: {}", file_id, e)
+                                    ));
+                                }
+                            }
+                        }
+                    },
+                    TrashedItemType::Folder => {
+                        // Restaurar la carpeta a su ubicación original
+                        let folder_id = item.original_id.to_string();
+                        let original_path = item.original_path.clone();
+                        
+                        info!("Restoring folder from trash: ID={}, OriginalPath={}", folder_id, original_path);
+                        match self.folder_repository.restore_from_trash(&folder_id, &original_path).await {
+                            Ok(_) => {
+                                info!("Successfully restored folder from trash: {}", folder_id);
+                            },
+                            Err(e) => {
+                                // Check if the error is because the folder is not found
+                                if format!("{}", e).contains("not found") {
+                                    info!("Folder not found in trash, may already have been restored: {}", folder_id);
+                                    // We continue so we can clean up the trash entry
+                                } else {
+                                    // Return error for other kinds of errors
+                                    error!("Error restoring folder from trash: {} - {}", folder_id, e);
+                                    return Err(DomainError::new(
+                                        ErrorKind::InternalError,
+                                        "Folder",
+                                        format!("Error restoring folder {} from trash: {}", folder_id, e)
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Always remove the item from the trash index to maintain consistency
+                info!("Removing item from trash index after restoration: {}", trash_id);
+                match self.trash_repository.restore_from_trash(&trash_uuid, &user_uuid).await {
+                    Ok(_) => {
+                        info!("Successfully removed entry from trash index: {}", trash_id);
+                    },
+                    Err(e) => {
+                        error!("Error removing entry from trash index: {} - {}", trash_id, e);
+                        return Err(DomainError::new(
+                            ErrorKind::InternalError,
+                            "Trash",
+                            format!("Error removing trash entry after restoration: {}", e)
+                        ));
+                    }
+                }
+                
+                info!("Item successfully restored from trash: {}", trash_id);
+                Ok(())
             },
-            TrashedItemType::Folder => {
-                // Restaurar la carpeta a su ubicación original
-                let folder_id = item.original_id.to_string();
-                self.folder_repository.restore_from_trash(&folder_id, &item.original_path).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::InternalError,
-                        "Folder",
-                        format!("Error restoring folder {} from trash: {}", folder_id, e)
-                    ))?;
-                debug!("Carpeta restaurada desde papelera: {}", folder_id);
+            Ok(None) => {
+                // If the item isn't found in trash, we can just return success
+                info!("Item not found in trash index, considering as already restored: {}", trash_id);
+                Ok(())
+            },
+            Err(e) => {
+                // Something went wrong with the repository
+                error!("Error retrieving item from trash repository: {} - {}", trash_id, e);
+                Err(e)
             }
         }
-        
-        // Eliminar el item de la papelera
-        self.trash_repository.restore_from_trash(&trash_uuid, &user_uuid).await?;
-        
-        Ok(())
     }
 
     #[instrument(skip(self))]
     async fn delete_permanently(&self, trash_id: &str, user_id: &str) -> Result<()> {
-        info!("Eliminando permanentemente elemento {} para usuario {}", trash_id, user_id);
+        info!("Permanently deleting item {} for user {}", trash_id, user_id);
         
-        let trash_uuid = Uuid::parse_str(trash_id)
-            .map_err(|e| DomainError::validation_error("Trash", format!("Invalid trash ID: {}", e)))?;
+        let trash_uuid = match Uuid::parse_str(trash_id) {
+            Ok(id) => {
+                info!("Trash UUID parsed successfully: {}", id);
+                id
+            },
+            Err(e) => {
+                error!("Invalid trash ID format: {} - {}", trash_id, e);
+                return Err(DomainError::validation_error("Trash", format!("Invalid trash ID: {}", e)));
+            }
+        };
             
-        let user_uuid = Uuid::parse_str(user_id)
-            .map_err(|e| DomainError::validation_error("User", format!("Invalid user ID: {}", e)))?;
+        let user_uuid = match Uuid::parse_str(user_id) {
+            Ok(id) => {
+                info!("User UUID parsed successfully: {}", id);
+                id
+            },
+            Err(e) => {
+                error!("Invalid user ID format: {} - {}", user_id, e);
+                return Err(DomainError::validation_error("User", format!("Invalid user ID: {}", e)));
+            }
+        };
         
         // Obtener el elemento de la papelera
-        let item = self.trash_repository.get_trash_item(&trash_uuid, &user_uuid).await?
-            .ok_or_else(|| DomainError::not_found("TrashedItem", trash_id.to_string()))?;
+        info!("Retrieving trash item from repository: ID={}", trash_id);
+        let item_result = self.trash_repository.get_trash_item(&trash_uuid, &user_uuid).await;
         
-        // Eliminar permanentemente según tipo
-        match item.item_type {
-            TrashedItemType::File => {
-                // Eliminar el archivo permanentemente
-                let file_id = item.original_id.to_string();
-                self.file_repository.delete_file_permanently(&file_id).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::InternalError,
-                        "File",
-                        format!("Error deleting file {} permanently: {}", file_id, e)
-                    ))?;
-                debug!("Archivo eliminado permanentemente: {}", file_id);
+        match item_result {
+            Ok(Some(item)) => {
+                info!("Found item in trash: ID={}, Type={:?}, OriginalID={}", 
+                      trash_id, item.item_type, item.original_id);
+                
+                // Eliminar permanentemente según tipo
+                match item.item_type {
+                    TrashedItemType::File => {
+                        // Eliminar el archivo permanentemente
+                        let file_id = item.original_id.to_string();
+                        
+                        info!("Permanently deleting file: {}", file_id);
+                        match self.file_repository.delete_file_permanently(&file_id).await {
+                            Ok(_) => {
+                                info!("Successfully deleted file permanently: {}", file_id);
+                            },
+                            Err(e) => {
+                                // Check if the file is not found - in that case, we can continue
+                                // because we still want to remove the item from the trash index
+                                if format!("{}", e).contains("not found") {
+                                    info!("File not found, may already have been deleted: {}", file_id);
+                                } else {
+                                    // Return error for other types of errors
+                                    error!("Error permanently deleting file: {} - {}", file_id, e);
+                                    return Err(DomainError::new(
+                                        ErrorKind::InternalError,
+                                        "File",
+                                        format!("Error deleting file {} permanently: {}", file_id, e)
+                                    ));
+                                }
+                            }
+                        }
+                    },
+                    TrashedItemType::Folder => {
+                        // Eliminar la carpeta permanentemente
+                        let folder_id = item.original_id.to_string();
+                        
+                        info!("Permanently deleting folder: {}", folder_id);
+                        match self.folder_repository.delete_folder_permanently(&folder_id).await {
+                            Ok(_) => {
+                                info!("Successfully deleted folder permanently: {}", folder_id);
+                            },
+                            Err(e) => {
+                                // Check if the folder is not found - in that case, we can continue
+                                if format!("{}", e).contains("not found") {
+                                    info!("Folder not found, may already have been deleted: {}", folder_id);
+                                } else {
+                                    // Return error for other types of errors
+                                    error!("Error permanently deleting folder: {} - {}", folder_id, e);
+                                    return Err(DomainError::new(
+                                        ErrorKind::InternalError,
+                                        "Folder",
+                                        format!("Error deleting folder {} permanently: {}", folder_id, e)
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Eliminar el item de la papelera siempre, para mantener consistencia
+                info!("Removing entry from trash index: {}", trash_id);
+                match self.trash_repository.delete_permanently(&trash_uuid, &user_uuid).await {
+                    Ok(_) => {
+                        info!("Successfully removed entry from trash index: {}", trash_id);
+                    },
+                    Err(e) => {
+                        error!("Error removing entry from trash index: {} - {}", trash_id, e);
+                        return Err(DomainError::new(
+                            ErrorKind::InternalError,
+                            "Trash",
+                            format!("Error removing trash entry: {}", e)
+                        ));
+                    }
+                };
+                
+                info!("Item permanently deleted from trash: {}", trash_id);
+                Ok(())
             },
-            TrashedItemType::Folder => {
-                // Eliminar la carpeta permanentemente
-                let folder_id = item.original_id.to_string();
-                self.folder_repository.delete_folder_permanently(&folder_id).await
-                    .map_err(|e| DomainError::new(
-                        ErrorKind::InternalError,
-                        "Folder",
-                        format!("Error deleting folder {} permanently: {}", folder_id, e)
-                    ))?;
-                debug!("Carpeta eliminada permanentemente: {}", folder_id);
+            Ok(None) => {
+                // If the item isn't found in trash, we can just return success
+                info!("Item not found in trash, considering as already deleted: {}", trash_id);
+                Ok(())
+            },
+            Err(e) => {
+                // Something went wrong with the repository
+                error!("Error retrieving item from trash repository: {} - {}", trash_id, e);
+                Err(e)
             }
         }
-        
-        // Eliminar el item de la papelera
-        self.trash_repository.delete_permanently(&trash_uuid, &user_uuid).await?;
-        
-        Ok(())
     }
 
     #[instrument(skip(self))]

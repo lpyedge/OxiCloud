@@ -1,9 +1,9 @@
 use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey, Algorithm};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
-use chrono::{Utc, DateTime};
+use chrono::Utc;
 
-use crate::domain::entities::user::{User, UserRole};
+use crate::domain::entities::user::User;
 use crate::common::errors::{DomainError, ErrorKind};
 
 // Reclamaciones JWT

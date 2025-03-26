@@ -6,12 +6,8 @@ use axum::{
     response::{Response, IntoResponse},
     body::Body,
 };
-use async_trait::async_trait;
-use futures::future::BoxFuture;
 
 use crate::common::di::AppState;
-use crate::common::errors::AppError;
-use crate::domain::entities::user::UserRole;
 
 // Extensión para almacenar datos del usuario autenticado
 #[derive(Clone, Debug)]

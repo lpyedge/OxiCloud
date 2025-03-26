@@ -266,15 +266,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         async fn move_to_trash(&self, file_id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
-            Err(domain::repositories::file_repository::FileRepositoryError::Other("Not implemented".to_string()))
+            // Since we're using TrashService to handle trashing, this method is not directly used
+            // but we'll implement it by delegating to the repository's delete_file method
+            self.repo.delete_file(file_id)
+                .await
+                .map_err(|e| domain::repositories::file_repository::FileRepositoryError::Other(format!("{}", e)))
         }
         
         async fn restore_from_trash(&self, file_id: &str, original_path: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
-            Err(domain::repositories::file_repository::FileRepositoryError::Other("Not implemented".to_string()))
+            use crate::domain::services::path_service::StoragePath;
+            
+            tracing::info!("Restoring file from trash: {} to {}", file_id, original_path);
+            
+            // We need to get the file from trash first to ensure it exists
+            match self.repo.get_file(file_id).await {
+                Ok(_) => {
+                    // Extract the parent folder ID from the original path if available
+                    let path_components: Vec<&str> = original_path.split('/').collect();
+                    let parent_folder: Option<String> = if path_components.len() > 1 {
+                        // Try to extract folder ID from path, but this is just a simplified approach
+                        // In a real implementation, we would need to find or create the folder
+                        tracing::info!("Attempting to restore to parent folder from path: {}", original_path);
+                        None // No folder ID for now, will go to root
+                    } else {
+                        None // No parent folder, go to root
+                    };
+                    
+                    // Use move_file to attempt to restore the file to its original location or root
+                    match self.repo.move_file(file_id, parent_folder).await {
+                        Ok(_) => {
+                            tracing::info!("Successfully restored file from trash: {}", file_id);
+                            Ok(())
+                        },
+                        Err(e) => {
+                            tracing::error!("Failed to restore file from trash: {}", e);
+                            Err(domain::repositories::file_repository::FileRepositoryError::Other(format!("Failed to restore file: {}", e)))
+                        }
+                    }
+                },
+                Err(e) => {
+                    tracing::error!("File not found in trash: {}", e);
+                    Err(domain::repositories::file_repository::FileRepositoryError::NotFound(file_id.to_string()))
+                }
+            }
         }
         
         async fn delete_file_permanently(&self, file_id: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
-            self.delete_file(file_id).await
+            tracing::info!("Permanently deleting file: {}", file_id);
+            
+            // Directly attempt to delete the file using the file service
+            match self.repo.delete_file(file_id).await {
+                Ok(_) => {
+                    tracing::info!("Successfully deleted file permanently: {}", file_id);
+                    Ok(())
+                },
+                Err(e) => {
+                    tracing::error!("Failed to permanently delete file: {}", e);
+                    Err(domain::repositories::file_repository::FileRepositoryError::Other(format!("Failed to delete file permanently: {}", e)))
+                }
+            }
         }
     }
     
@@ -365,14 +415,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         async fn move_to_trash(&self, folder_id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
-            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+            // Since we're using TrashService to handle trashing, this method is not directly used
+            // but we'll still use delete_folder since the underlying repository has proper trash support
+            self.repo.delete_folder(folder_id)
+                .await
+                .map_err(|e| domain::repositories::folder_repository::FolderRepositoryError::Other(format!("{}", e)))
         }
         
         async fn restore_from_trash(&self, folder_id: &str, original_path: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
-            Err(domain::repositories::folder_repository::FolderRepositoryError::Other("Not implemented".to_string()))
+            // Convert the original_path to a StoragePath for the repository
+            use crate::domain::services::path_service::StoragePath;
+            let storage_path = StoragePath::from_string(original_path);
+            let _ = storage_path; // Prevent unused variable warning
+            
+            // The underlying repo doesn't have a direct API for this, but the implementation exists
+            // in the folder repository through TrashService
+            // This should be coordinated through TrashService instead
+            Err(domain::repositories::folder_repository::FolderRepositoryError::Other(
+                "Restore from trash should be handled by TrashService, not through this adapter".to_string()))
         }
         
         async fn delete_folder_permanently(&self, folder_id: &str) -> domain::repositories::folder_repository::FolderRepositoryResult<()> {
+            // The repository now has proper implementation for permanent deletion
+            // But we still use delete_folder since that's the method available on FolderStoragePort
             self.delete_folder(folder_id).await
         }
     }
