@@ -1,4 +1,4 @@
-# 🚀 OxiCloud
+# 🚀 OxiCloud [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 <p align="center">
   <img src="static/oxicloud-logo.svg" alt="OxiCloud" width="300" />
@@ -95,17 +95,13 @@ See [TODO-LIST.md](TODO-LIST.md) for my current development priorities.
 
 ## 🤝 Contributing
 
-Contributions are welcome! The project is still in early stages, so there's lots of room for improvement:
+Contributions are welcome! The project is still in early stages, so there's lots of room for improvement.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/something-useful`)
-3. Commit your changes (`git commit -m 'Add something useful'`)
-4. Push to the branch (`git push origin feature/something-useful`)
-5. Open a Pull Request
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for detailed information on how to contribute to OxiCloud. All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## 📜 License
 
-OxiCloud is available under the MIT License. See the LICENSE file for more information.
+OxiCloud is available under the [MIT License](LICENSE). See the [LICENSE](LICENSE) file for more information.
 
 ---
 
