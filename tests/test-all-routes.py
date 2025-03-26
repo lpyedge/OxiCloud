@@ -72,7 +72,7 @@ for route in routes:
 
 # Test POST upload
 print("\nTesting file upload...")
-with open("test-all-routes.py", "rb") as f:
+with open(__file__, "rb") as f:  # Use __file__ to reference the current script regardless of location
     files = {"file": f}
     data = {"folder_id": "folder-storage:1"}
     test_route(f"{SERVER_URL}/api/files/upload", method="POST", data=data, files=files)

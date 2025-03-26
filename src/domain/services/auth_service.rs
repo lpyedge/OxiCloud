@@ -1,44 +1,83 @@
 use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey, Algorithm};
 use serde::{Serialize, Deserialize};
 use uuid::Uuid;
-use chrono::{Utc, DateTime};
+use chrono::Utc;
 
-use crate::domain::entities::user::{User, UserRole};
+use crate::domain::entities::user::User;
 use crate::common::errors::{DomainError, ErrorKind};
 
-// Reclamaciones JWT
+/**
+ * JWT claims structure for authentication tokens.
+ * 
+ * This structure represents the payload of JWT tokens used for authentication
+ * in the system. It contains all the necessary claims to identify users and
+ * manage token lifecycle.
+ */
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {
-    pub sub: String,     // user ID
-    pub exp: i64,        // expiration timestamp
-    pub iat: i64,        // issued at timestamp
-    pub jti: String,     // JWT ID
-    pub username: String, // username
-    pub email: String,   // email
-    pub role: String,    // role as string
+    /// Subject identifier - contains the user ID
+    pub sub: String,     
+    
+    /// Expiration timestamp (seconds since Unix epoch)
+    pub exp: i64,        
+    
+    /// Issued at timestamp (seconds since Unix epoch)
+    pub iat: i64,        
+    
+    /// JWT unique ID for token tracking and revocation
+    pub jti: String,     
+    
+    /// Username for display and identification purposes
+    pub username: String,
+    
+    /// User email for communication and identification
+    pub email: String,   
+    
+    /// User role for authorization checks
+    pub role: String,    
 }
 
+/**
+ * Authentication-specific error types.
+ * 
+ * This enum encapsulates all error scenarios that can occur during
+ * authentication and authorization processes, providing clear error messages
+ * and categorization for proper handling.
+ */
 #[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    /// Returned when username/password authentication fails
     #[error("Credenciales inválidas")]
     InvalidCredentials,
     
+    /// Returned when a JWT token has passed its expiration time
     #[error("Token expirado")]
     TokenExpired,
     
+    /// Returned when a JWT token is malformed or has invalid signature
     #[error("Token inválido: {0}")]
     InvalidToken(String),
     
+    /// Returned when a user attempts to access a resource they don't have permission for
     #[error("Acceso denegado: {0}")]
     AccessDenied(String),
     
+    /// Returned when a requested operation is not allowed for the user
     #[error("Operación no permitida: {0}")]
     OperationNotAllowed(String),
     
+    /// Returned for unexpected errors in the authentication system
     #[error("Error interno: {0}")]
     InternalError(String),
 }
 
+/**
+ * Conversion from AuthError to DomainError.
+ * 
+ * This implementation allows authentication errors to be seamlessly
+ * transformed into domain errors, making error handling more consistent
+ * throughout the application.
+ */
 impl From<AuthError> for DomainError {
     fn from(err: AuthError) -> Self {
         match err {
@@ -64,10 +103,22 @@ impl From<AuthError> for DomainError {
     }
 }
 
+/**
+ * Authentication service for managing user sessions and authorization.
+ * 
+ * This service provides the core authentication functionality for the system,
+ * including JWT token generation and validation, refresh token management,
+ * and session duration control.
+ */
 pub struct AuthService {
+    /// Secret key used for signing JWT tokens
     jwt_secret: String,
-    access_token_expiry: i64,  // segundos
-    refresh_token_expiry: i64, // segundos
+    
+    /// Expiration time for access tokens in seconds
+    access_token_expiry: i64,
+    
+    /// Expiration time for refresh tokens in seconds
+    refresh_token_expiry: i64,
 }
 
 impl AuthService {

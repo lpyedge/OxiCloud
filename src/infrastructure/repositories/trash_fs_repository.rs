@@ -49,13 +49,59 @@ impl TrashFsRepository {
     
     /// Asegura que existe el directorio de papelera
     async fn ensure_trash_dir(&self) -> Result<()> {
+        debug!("Checking if trash directory exists: {}", self.trash_dir.display());
         if !self.trash_dir.exists() {
+            debug!("Trash directory does not exist, creating it: {}", self.trash_dir.display());
             fs::create_dir_all(&self.trash_dir).await
-                .map_err(|e| DomainError::new(
-                    ErrorKind::InternalError,
-                    "Trash",
-                    format!("Failed to create trash directory: {}", e)
-                ))?;
+                .map_err(|e| {
+                    error!("Failed to create trash directory {}: {}", self.trash_dir.display(), e);
+                    DomainError::new(
+                        ErrorKind::InternalError,
+                        "Trash",
+                        format!("Failed to create trash directory {}: {}", self.trash_dir.display(), e)
+                    )
+                })?;
+            debug!("Trash directory created successfully");
+        } else {
+            debug!("Trash directory already exists");
+        }
+        
+        // Ensure the files directory exists
+        let files_dir = self.trash_dir.join("files");
+        debug!("Checking if trash files directory exists: {}", files_dir.display());
+        if !files_dir.exists() {
+            debug!("Trash files directory does not exist, creating it: {}", files_dir.display());
+            fs::create_dir_all(&files_dir).await
+                .map_err(|e| {
+                    error!("Failed to create trash files directory {}: {}", files_dir.display(), e);
+                    DomainError::new(
+                        ErrorKind::InternalError,
+                        "Trash",
+                        format!("Failed to create trash files directory {}: {}", files_dir.display(), e)
+                    )
+                })?;
+            debug!("Trash files directory created successfully");
+        } else {
+            debug!("Trash files directory already exists");
+        }
+        
+        // Also ensure the folders directory exists
+        let folders_dir = self.trash_dir.join("folders");
+        debug!("Checking if trash folders directory exists: {}", folders_dir.display());
+        if !folders_dir.exists() {
+            debug!("Trash folders directory does not exist, creating it: {}", folders_dir.display());
+            fs::create_dir_all(&folders_dir).await
+                .map_err(|e| {
+                    error!("Failed to create trash folders directory {}: {}", folders_dir.display(), e);
+                    DomainError::new(
+                        ErrorKind::InternalError,
+                        "Trash",
+                        format!("Failed to create trash folders directory {}: {}", folders_dir.display(), e)
+                    )
+                })?;
+            debug!("Trash folders directory created successfully");
+        } else {
+            debug!("Trash folders directory already exists");
         }
         
         Ok(())
@@ -201,17 +247,36 @@ impl TrashRepository for TrashFsRepository {
         
         // Aseguramos que existe el directorio de la papelera para este usuario
         let user_trash_dir = self.trash_dir.join("files").join(item.user_id.to_string());
-        fs::create_dir_all(&user_trash_dir).await
-            .map_err(|e| DomainError::new(
-                ErrorKind::InternalError,
-                "Trash",
-                format!("Failed to create user trash directory: {}", e)
-            ))?;
+        debug!("User trash directory path: {}", user_trash_dir.display());
         
-        // Añadimos la entrada al índice
+        // Create the user-specific trash directory
+        debug!("Creating user trash directory: {}", user_trash_dir.display());
+        match fs::create_dir_all(&user_trash_dir).await {
+            Ok(_) => debug!("User trash directory created successfully"),
+            Err(e) => {
+                error!("Failed to create user trash directory {}: {}", user_trash_dir.display(), e);
+                return Err(DomainError::new(
+                    ErrorKind::InternalError,
+                    "Trash",
+                    format!("Failed to create user trash directory: {}", e)
+                ));
+            }
+        }
+        
+        // Log the current trash entries before adding the new one
         let mut entries = self.get_trash_entries().await?;
-        entries.push(self.trashed_item_to_entry(item));
+        debug!("Current trash entries count: {}", entries.len());
+        
+        // Create the entry for the trash index
+        let entry = self.trashed_item_to_entry(item);
+        debug!("Created trash entry: id={}, original_id={}, name={}", 
+               entry.id, entry.original_id, entry.name);
+        
+        // Add the entry to the index and save
+        entries.push(entry);
+        debug!("Saving updated trash index with {} entries", entries.len());
         self.save_trash_entries(entries).await?;
+        debug!("Trash index updated successfully");
         
         Ok(())
     }

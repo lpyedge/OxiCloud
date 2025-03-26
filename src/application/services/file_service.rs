@@ -10,25 +10,41 @@ use crate::common::errors::DomainError;
 use futures::Stream;
 use bytes::Bytes;
 
-/// Errores específicos del servicio de archivos
+/**
+ * File service-specific error types.
+ * 
+ * This enum represents the application-level errors that can occur during file operations,
+ * providing a translation layer between domain/infrastructure errors and application errors.
+ */
 #[derive(Debug, Error)]
 pub enum FileServiceError {
+    /// Returned when a requested file cannot be found
     #[error("Archivo no encontrado: {0}")]
     NotFound(String),
     
+    /// Returned when a file operation conflicts with existing files
     #[error("Archivo ya existe: {0}")]
     Conflict(String),
     
+    /// Returned when file access fails due to permissions or I/O issues
     #[error("Error de acceso al archivo: {0}")]
     AccessError(String),
     
+    /// Returned when a file path is invalid
     #[error("Ruta de archivo inválida: {0}")]
     InvalidPath(String),
     
+    /// Generic internal error for unexpected failures
     #[error("Error interno: {0}")]
     InternalError(String),
 }
 
+/**
+ * Converts repository errors to service errors.
+ * 
+ * This implementation maps low-level repository errors to more 
+ * application-appropriate error types, abstracting away the implementation details.
+ */
 impl From<FileRepositoryError> for FileServiceError {
     fn from(err: FileRepositoryError) -> Self {
         match err {
@@ -42,6 +58,12 @@ impl From<FileRepositoryError> for FileServiceError {
     }
 }
 
+/**
+ * Converts domain errors to service errors.
+ * 
+ * This implementation ensures that general domain errors are properly translated
+ * to file service-specific errors while preserving their semantic meaning.
+ */
 impl From<DomainError> for FileServiceError {
     fn from(err: DomainError) -> Self {
         match err.kind {
@@ -54,6 +76,12 @@ impl From<DomainError> for FileServiceError {
     }
 }
 
+/**
+ * Converts service errors to domain errors.
+ * 
+ * This implementation allows service errors to be propagated up the call stack as
+ * domain errors when crossing architectural boundaries.
+ */
 impl From<FileServiceError> for DomainError {
     fn from(err: FileServiceError) -> Self {
         match err {
@@ -66,10 +94,23 @@ impl From<FileServiceError> for DomainError {
     }
 }
 
+/**
+ * Type alias for results of file service operations.
+ * 
+ * Provides a convenient way to return either a successful value or a FileServiceError.
+ */
 pub type FileServiceResult<T> = Result<T, FileServiceError>;
 
-/// Service for file operations
+/**
+ * Service component for file operations in the application layer.
+ * 
+ * The FileService implements the application use cases related to files by orchestrating
+ * domain logic and infrastructure components. It acts as an adapter between the inbound
+ * ports (interfaces) and outbound ports (repositories), translating between DTOs and
+ * domain entities.
+ */
 pub struct FileService {
+    /// Repository responsible for file storage operations
     file_repository: Arc<dyn FileStoragePort>,
 }
 

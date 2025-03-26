@@ -17,6 +17,14 @@ pub struct FileSystemI18nService {
 }
 
 impl FileSystemI18nService {
+    /// Create a dummy service for testing
+    pub fn dummy() -> Self {
+        Self {
+            translations_dir: PathBuf::from("/tmp/dummy_translations"),
+            cache: RwLock::new(HashMap::new()),
+        }
+    }
+
     /// Creates a new file system i18n service
     pub fn new(translations_dir: PathBuf) -> Self {
         Self {

@@ -4,6 +4,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use tokio::fs;
 use tokio::time::timeout;
+use tracing::instrument;
 
 use crate::domain::entities::folder::{Folder, FolderError};
 use crate::domain::repositories::folder_repository::{
@@ -326,23 +327,22 @@ impl FolderStoragePort for FolderFsRepository {
 
 #[async_trait]
 impl FolderRepository for FolderFsRepository {
-    // Temporary stubs for trash functionality
-    async fn move_to_trash(&self, _folder_id: &str) -> FolderRepositoryResult<()> {
-        Err(FolderRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn move_to_trash(&self, folder_id: &str) -> FolderRepositoryResult<()> {
+        // Use the private implementation from folder_fs_repository_trash.rs
+        self._trash_move_to_trash(folder_id).await
     }
     
-    async fn restore_from_trash(&self, _folder_id: &str, _original_path: &str) -> FolderRepositoryResult<()> {
-        Err(FolderRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn restore_from_trash(&self, folder_id: &str, original_path: &str) -> FolderRepositoryResult<()> {
+        // Use the private implementation from folder_fs_repository_trash.rs
+        self._trash_restore_from_trash(folder_id, original_path).await
     }
     
-    async fn delete_folder_permanently(&self, _folder_id: &str) -> FolderRepositoryResult<()> {
-        Err(FolderRepositoryError::OperationNotSupported(
-            "Trash feature temporarily disabled".to_string()
-        ))
+    #[instrument(skip(self))]
+    async fn delete_folder_permanently(&self, folder_id: &str) -> FolderRepositoryResult<()> {
+        // Use the private implementation from folder_fs_repository_trash.rs
+        self._trash_delete_folder_permanently(folder_id).await
     }
     async fn create_folder(&self, name: String, parent_id: Option<String>) -> FolderRepositoryResult<Folder> {
         // Get the parent folder path (if any)

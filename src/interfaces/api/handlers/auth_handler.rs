@@ -2,10 +2,9 @@ use std::sync::Arc;
 use axum::{
     Router,
     routing::{post, get, put},
-    extract::{State, Json, Path, Extension},
+    extract::{State, Json, Extension},
     http::{StatusCode, HeaderMap, header},
     response::IntoResponse,
-    middleware,
 };
 
 use crate::common::di::AppState;

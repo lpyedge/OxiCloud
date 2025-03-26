@@ -3,6 +3,10 @@ name = "oxicloud"
 version = "0.1.0"
 edition = "2021"
 
+[[bench]]
+name = "file_operations"
+harness = true
+
 [dependencies]
 axum = { version = "0.8.1", features = ["multipart", "http1", "tokio"] }
 tokio = { version = "1.44.1", features = ["full"] }
@@ -44,9 +48,18 @@ default = []
 test_utils = ["mockall"]
 
 [profile.release]
-lto = "thin"
+lto = "fat"
 codegen-units = 1
 opt-level = 3
 panic = "abort"
 strip = true
+
+[profile.dev]
+opt-level = 1
+debug = true
+
+[profile.bench]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
 

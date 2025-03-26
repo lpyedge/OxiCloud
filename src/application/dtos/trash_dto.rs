@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 /// DTO representing an item in the trash
 #[derive(Debug, Serialize, Deserialize)]

@@ -2,7 +2,6 @@ use std::task::{Context, Poll};
 use std::future::Future;
 use std::pin::Pin;
 use axum::{
-    body::Body,
     extract::Request,
     response::Response,
     middleware::Next,

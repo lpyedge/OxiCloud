@@ -5,7 +5,7 @@ use crate::application::dtos::folder_dto::{CreateFolderDto, RenameFolderDto, Mov
 use crate::application::ports::inbound::FolderUseCase;
 use crate::application::ports::outbound::FolderStoragePort;
 use crate::application::transactions::storage_transaction::StorageTransaction;
-use crate::common::errors::{DomainError, ErrorKind, ErrorContext};
+use crate::common::errors::{DomainError, ErrorKind};
 
 /// Implementación del caso de uso para operaciones de carpetas
 pub struct FolderService {

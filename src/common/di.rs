@@ -14,23 +14,20 @@ use crate::infrastructure::services::file_system_i18n_service::FileSystemI18nSer
 use crate::infrastructure::services::id_mapping_service::IdMappingService;
 use crate::infrastructure::services::cache_manager::StorageCacheManager;
 use crate::infrastructure::services::file_metadata_cache::FileMetadataCache;
-use crate::infrastructure::services::trash_cleanup_service::TrashCleanupService;
 use crate::application::services::folder_service::FolderService;
 use crate::application::services::file_service::FileService;
 use crate::application::services::i18n_application_service::I18nApplicationService;
-use crate::application::services::trash_service::TrashService;
 use crate::application::ports::trash_ports::TrashUseCase;
 use crate::application::services::storage_mediator::{StorageMediator, FileSystemStorageMediator};
-use crate::application::ports::inbound::{FileUseCase, FolderUseCase, UseCaseFactory};
+use crate::application::ports::inbound::{FileUseCase, FolderUseCase};
 use crate::application::ports::outbound::{FileStoragePort, FolderStoragePort};
 use crate::application::ports::file_ports::{FileUploadUseCase, FileRetrievalUseCase, FileManagementUseCase, FileUseCaseFactory};
-use crate::application::ports::storage_ports::{FileReadPort, FileWritePort, FilePathResolutionPort};
+use crate::application::ports::storage_ports::{FileReadPort, FileWritePort};
 use crate::infrastructure::repositories::{FileMetadataManager, FilePathResolver, FileFsReadRepository, FileFsWriteRepository};
 use crate::application::services::{FileUploadService, FileRetrievalService, FileManagementService, AppFileUseCaseFactory};
 use crate::common::errors::DomainError;
 use crate::domain::services::i18n_service::I18nService;
 use crate::common::config::AppConfig;
-use crate::domain::repositories::folder_repository::FolderRepository;
 
 /// Fábrica para los diferentes componentes de la aplicación
 #[allow(dead_code)]

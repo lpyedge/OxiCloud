@@ -11,6 +11,8 @@ use crate::application::dtos::folder_dto::{CreateFolderDto, RenameFolderDto, Mov
 use crate::application::dtos::pagination::PaginationRequestDto;
 use crate::common::errors::ErrorKind;
 use crate::application::ports::inbound::FolderUseCase;
+use crate::common::di::AppState as GlobalAppState;
+use crate::interfaces::middleware::auth::AuthUser;
 
 type AppState = Arc<FolderService>;
 
@@ -148,11 +150,12 @@ impl FolderHandler {
         }
     }
     
-    /// Deletes a folder
+    /// Deletes a folder (with trash support)
     pub async fn delete_folder(
         State(service): State<AppState>,
         Path(id): Path<String>,
     ) -> impl IntoResponse {
+        // For folder deletion without trash functionality
         match service.delete_folder(&id).await {
             Ok(_) => StatusCode::NO_CONTENT.into_response(),
             Err(err) => {
@@ -162,6 +165,51 @@ impl FolderHandler {
                 };
                 
                 (status, err.to_string()).into_response()
+            }
+        }
+    }
+    
+    /// Deletes a folder with trash functionality
+    pub async fn delete_folder_with_trash(
+        State(state): State<GlobalAppState>,
+        auth_user: AuthUser,
+        Path(id): Path<String>,
+    ) -> impl IntoResponse {
+        // Check if trash service is available
+        if let Some(trash_service) = &state.trash_service {
+            tracing::info!("Moving folder to trash: {}", id);
+            
+            // Try to move to trash first
+            match trash_service.move_to_trash(&id, "folder", &"00000000-0000-0000-0000-000000000000".to_string()).await {
+                Ok(_) => {
+                    tracing::info!("Folder successfully moved to trash: {}", id);
+                    return StatusCode::NO_CONTENT.into_response();
+                },
+                Err(err) => {
+                    tracing::warn!("Could not move folder to trash, falling back to permanent delete: {}", err);
+                    // Fall through to regular delete if trash fails
+                }
+            }
+        }
+        
+        // Fallback to permanent delete if trash is unavailable or failed
+        let folder_service = &state.applications.folder_service;
+        match folder_service.delete_folder(&id).await {
+            Ok(_) => {
+                tracing::info!("Folder permanently deleted: {}", id);
+                StatusCode::NO_CONTENT.into_response()
+            },
+            Err(err) => {
+                tracing::error!("Error deleting folder: {}", err);
+                
+                let status = match err.kind {
+                    ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                };
+                
+                (status, Json(serde_json::json!({
+                    "error": format!("Error deleting folder: {}", err)
+                }))).into_response()
             }
         }
     }
