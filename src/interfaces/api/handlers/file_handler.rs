@@ -18,10 +18,32 @@ use crate::infrastructure::services::compression_service::{
 };
 use crate::common::di::AppState;
 
+/**
+ * Type aliases for dependency injection state.
+ * These aliases improve code readability when working with service dependencies.
+ */
+/// State containing the file service for dependency injection
 type FileServiceState = Arc<FileService>;
+/// Global application state for dependency injection
 type GlobalState = AppState;
 
-/// Handler for file-related API endpoints
+/**
+ * API handler for file-related operations.
+ * 
+ * The FileHandler is responsible for processing HTTP requests related to file operations.
+ * It handles:
+ * 
+ * 1. File uploads through multipart form data
+ * 2. File downloads with optional compression
+ * 3. Listing files in folders
+ * 4. Moving files between folders
+ * 5. Deleting files (with trash integration)
+ * 
+ * This component acts as an adapter in the hexagonal architecture, translating
+ * between HTTP requests/responses and application service calls. It handles
+ * HTTP-specific concerns like status codes, headers, and request parsing while
+ * delegating business logic to the application services.
+ */
 pub struct FileHandler;
 
 // Simpler approach to make streams Unpin - use Pin<Box<dyn Stream>> directly

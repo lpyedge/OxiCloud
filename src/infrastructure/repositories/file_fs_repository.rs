@@ -26,6 +26,25 @@ use crate::common::config::AppConfig;
 use crate::application::ports::outbound::FileStoragePort;
 use crate::infrastructure::repositories::parallel_file_processor::ParallelFileProcessor;
 
+/**
+ * Filesystem implementation of the File Repository interface.
+ * 
+ * This repository provides a concrete implementation of the FileRepository domain interface
+ * that interacts with a filesystem-based storage backend. It implements:
+ * 
+ * 1. File creation, retrieval, and deletion operations
+ * 2. File content reading (both in-memory and streaming)
+ * 3. Folder organization for files
+ * 4. ID-to-path mapping persistence
+ * 5. Optimized handling of large files using parallel I/O
+ * 6. Metadata caching to reduce filesystem operations
+ * 7. Trash operations for file lifecycle management
+ * 
+ * The implementation follows the hexagonal architecture pattern as a secondary adapter,
+ * implementing domain interfaces and ports while isolating the application core from
+ * filesystem-specific details.
+ */
+
 // Usar constantes de la configuración centralizada en lugar de valores fijos
 // Esto se reemplaza con self.config.concurrency.max_concurrent_files más adelante
 

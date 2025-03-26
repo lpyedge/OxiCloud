@@ -6,10 +6,41 @@ use axum::Router;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+/**
+ * OxiCloud - Cloud Storage Platform
+ * 
+ * OxiCloud is a NextCloud-like file storage system built in Rust with a focus on 
+ * performance, security, and clean architecture. The system provides:
+ * 
+ * - File and folder management with rich metadata
+ * - User authentication and authorization
+ * - File trash system with automatic cleanup
+ * - Efficient handling of large files through parallel processing
+ * - Compression capabilities for bandwidth optimization
+ * - RESTful API and web interface
+ * 
+ * The architecture follows the Clean/Hexagonal Architecture pattern with:
+ * 
+ * - Domain Layer: Core business entities and repository interfaces (domain/*)
+ * - Application Layer: Use cases and service orchestration (application/*)
+ * - Infrastructure Layer: Technical implementations of repositories (infrastructure/*)
+ * - Interface Layer: API endpoints and web controllers (interfaces/*)
+ * 
+ * Dependencies are managed through dependency inversion, with high-level modules
+ * defining interfaces (ports) that low-level modules implement (adapters).
+ * 
+ * @author OxiCloud Development Team
+ */
+
+/// Common utilities, configuration, and error handling
 mod common;
+/// Core domain model, entities, and business rules
 mod domain;
+/// Application services, use cases, and DTOs
 mod application;
+/// Technical implementations of repositories and services
 mod infrastructure;
+/// External interfaces like API endpoints and web controllers
 mod interfaces;
 
 use application::services::folder_service::FolderService;

@@ -11,11 +11,30 @@ use crate::domain::repositories::file_repository::FileRepository;
 use crate::domain::repositories::folder_repository::FolderRepository;
 use crate::domain::repositories::trash_repository::TrashRepository;
 
-/// Servicio de aplicación para operaciones de papelera
+/**
+ * Application service for trash operations.
+ * 
+ * The TrashService implements the trash management functionality in the application layer,
+ * handling movement of files and folders to trash, restoration from trash, and permanent
+ * deletion. It orchestrates interactions between the domain entities and infrastructure
+ * repositories while enforcing business rules like retention policies.
+ * 
+ * This service follows the Clean Architecture pattern by:
+ * - Depending on domain interfaces rather than concrete implementations
+ * - Orchestrating domain operations without containing domain logic
+ * - Exposing its functionality through the TrashUseCase port
+ */
 pub struct TrashService {
+    /// Repository for trash-specific operations like listing and retrieving trashed items
     trash_repository: Arc<dyn TrashRepository>,
+    
+    /// Repository for file operations used when trashing, restoring, or deleting files
     file_repository: Arc<dyn FileRepository>,
+    
+    /// Repository for folder operations used when trashing, restoring, or deleting folders
     folder_repository: Arc<dyn FolderRepository>,
+    
+    /// Number of days items should be kept in trash before automatic cleanup
     retention_days: u32,
 }
 

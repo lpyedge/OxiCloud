@@ -1,50 +1,70 @@
 use serde::{Serialize, Deserialize};
 use crate::domain::services::path_service::StoragePath;
 
-/// Error en la creación o manipulación de entidades de archivo
+/**
+ * Represents errors that can occur during file entity operations.
+ * 
+ * This enum encapsulates various error conditions that may arise when creating,
+ * validating, or manipulating file entities in the domain model.
+ */
 #[derive(Debug, thiserror::Error)]
 pub enum FileError {
+    /// Occurs when a file name contains invalid characters or is empty.
     #[error("Nombre de archivo inválido: {0}")]
     InvalidFileName(String),
     
+    /// Occurs when validation fails for any file entity attribute.
     #[error("Error en la validación: {0}")]
     #[allow(dead_code)]
     ValidationError(String),
 }
 
-/// Tipo de resultado para operaciones con entidades de archivo
+/**
+ * Type alias for results of file entity operations.
+ * 
+ * Provides a convenient way to return either a successful value or a FileError.
+ */
 pub type FileResult<T> = Result<T, FileError>;
 
-/// Represents a file entity in the domain
+/**
+ * Represents a file in the system's domain model.
+ * 
+ * The File entity is a core domain object that encapsulates all properties and behaviors
+ * of a file in the system. It implements an immutable design pattern where modification
+ * operations return new instances rather than modifying the existing one.
+ * 
+ * This entity maintains both physical storage information and logical metadata about files,
+ * serving as the bridge between the storage system and the application.
+ */
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct File {
-    /// Unique identifier for the file
+    /// Unique identifier for the file - used throughout the system for file operations
     id: String,
     
-    /// Name of the file
+    /// Name of the file including extension
     name: String,
     
-    /// Path to the file in the domain model
+    /// Path to the file in the domain model - not serialized as it contains internal representation
     #[serde(skip_serializing, skip_deserializing)]
     storage_path: StoragePath,
     
-    /// String representation of the path (for serialization compatibility)
+    /// String representation of the path for serialization and API compatibility
     #[serde(rename = "path")]
     path_string: String,
     
     /// Size of the file in bytes
     size: u64,
     
-    /// MIME type of the file
+    /// MIME type of the file (e.g., "text/plain", "image/jpeg")
     mime_type: String,
     
-    /// Parent folder ID
+    /// Parent folder ID if the file is within a folder, None if in root
     folder_id: Option<String>,
     
-    /// Creation timestamp
+    /// Creation timestamp (seconds since UNIX epoch)
     created_at: u64,
     
-    /// Last modification timestamp
+    /// Last modification timestamp (seconds since UNIX epoch)
     modified_at: u64,
 }
 

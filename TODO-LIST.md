@@ -5,12 +5,12 @@ This document contains the task list for the development of OxiCloud, a minimali
 ## Phase 1: Basic File Functionalities
 
 ### Folder System
-- [ ] Implement API for creating folders
-- [ ] Add support for hierarchical paths in the backend
+- [x] Implement API for creating folders
+- [x] Add support for hierarchical paths in the backend
 - [ ] Update UI to show folder structure (tree)
-- [ ] Implement navigation between folders
-- [ ] Add functionality to rename folders
-- [ ] Add option to move files between folders
+- [x] Implement navigation between folders
+- [x] Add functionality to rename folders
+- [x] Add option to move files between folders
 
 ### File Preview
 - [ ] Implement integrated image viewer
@@ -31,7 +31,7 @@ This document contains the task list for the development of OxiCloud, a minimali
 - [ ] Improve responsive design for mobile devices
 - [ ] Implement drag & drop between folders
 - [ ] Add support for multiple file selection
-- [ ] Implement multiple file uploads
+- [x] Implement multiple file uploads
 - [ ] Add progress indicators for long operations
 - [ ] Implement UI notifications for events
 
@@ -53,9 +53,9 @@ This document contains the task list for the development of OxiCloud, a minimali
 - [ ] Add storage usage monitoring
 
 ### Basic Security
-- [ ] Implement secure password hashing with Argon2
-- [ ] Add session management
-- [ ] Implement JWT authentication token
+- [x] Implement secure password hashing with Argon2
+- [x] Add session management
+- [x] Implement JWT authentication token
 - [ ] Add CSRF protection
 - [ ] Implement login attempt limits
 - [ ] Create activity logging system
@@ -90,8 +90,8 @@ This document contains the task list for the development of OxiCloud, a minimali
 
 ### Complete REST API
 - [ ] Design OpenAPI specification
-- [ ] Implement endpoints for file operations
-- [ ] Add endpoints for users and authentication
+- [x] Implement endpoints for file operations
+- [x] Add endpoints for users and authentication
 - [ ] Implement automatic documentation (Swagger)
 - [ ] Create API token system
 - [ ] Implement rate limiting
@@ -141,8 +141,8 @@ This document contains the task list for the development of OxiCloud, a minimali
 ### Backend
 - [x] Implement file cache with Rust
 - [x] Enable Link Time Optimization (LTO) for better performance
-- [ ] Optimize large file transmission
-- [ ] Add adaptive compression by file type
+- [x] Optimize large file transmission
+- [x] Add adaptive compression by file type
 - [x] Implement asynchronous processing for heavy tasks
 - [ ] Optimize database queries
 - [ ] Implement scaling strategies
@@ -158,16 +158,16 @@ This document contains the task list for the development of OxiCloud, a minimali
 ### Storage
 - [ ] Research deduplication options
 - [ ] Implement block storage
-- [ ] Add transparent compression by file type
+- [x] Add transparent compression by file type
 - [ ] Implement log rotation and archiving
 - [ ] Create automated backup system
 - [ ] Add support for distributed storage
 
 ## Infrastructure and Deployment
 
-- [ ] Create Docker configuration
+- [x] Create Docker configuration
 - [ ] Implement CI/CD with GitHub Actions
-- [ ] Add automated tests
+- [x] Add automated tests
 - [ ] Create installation documentation
 - [ ] Implement monitoring and alerts
 - [ ] Add automatic update system
