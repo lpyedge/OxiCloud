@@ -273,6 +273,7 @@ pub struct FeaturesConfig {
     pub enable_user_storage_quotas: bool,
     pub enable_file_sharing: bool,
     pub enable_trash: bool,
+    pub enable_search: bool,
 }
 
 impl Default for FeaturesConfig {
@@ -282,6 +283,7 @@ impl Default for FeaturesConfig {
             enable_user_storage_quotas: false,
             enable_file_sharing: false,
             enable_trash: true,  // Enable trash feature
+            enable_search: true, // Enable search feature
         }
     }
 }

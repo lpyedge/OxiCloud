@@ -227,14 +227,33 @@ function getSupportedLocales() {
     return [...supportedLocales];
 }
 
+// Flag to track if translations are loaded
+let translationsLoaded = false;
+
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', initI18n);
+document.addEventListener('DOMContentLoaded', async () => {
+    await initI18n();
+    translationsLoaded = true;
+    // Dispatch an event when translations are fully loaded
+    window.dispatchEvent(new Event('translationsLoaded'));
+});
+
+// Improved t function with fallback for early calls
+function safeT(key, params = {}) {
+    if (!translationsLoaded) {
+        console.warn(`Translations for ${currentLocale} not loaded yet`);
+        // Return a default value or the key depending on context
+        return key.split('.').pop() || key;
+    }
+    return t(key, params);
+}
 
 // Export functions for use in other modules
 window.i18n = {
-    t,
+    t: safeT,
     setLocale,
     getCurrentLocale,
     getSupportedLocales,
-    translatePage
+    translatePage,
+    isLoaded: () => translationsLoaded
 };

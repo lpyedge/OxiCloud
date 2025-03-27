@@ -20,12 +20,12 @@ This document contains the task list for the development of OxiCloud, a minimali
 - [ ] Add text/code preview
 
 ### Enhanced Search
-- [ ] Implement search by name
-- [ ] Add filters by file type
-- [ ] Implement search by date range
-- [ ] Add filter by file size
-- [ ] Add search within specific folders
-- [ ] Implement cache for search results
+- [x] Implement search by name
+- [x] Add filters by file type
+- [x] Implement search by date range
+- [x] Add filter by file size
+- [x] Add search within specific folders
+- [x] Implement cache for search results
 
 ### UI/UX Optimizations
 - [ ] Improve responsive design for mobile devices

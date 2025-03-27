@@ -67,6 +67,16 @@
   "breadcrumb": {
     "home": "Home"
   },
+  "trash": {
+    "empty_trash": "Empty Trash",
+    "empty_state": "Trash is empty",
+    "original_location": "Original location",
+    "deleted_date": "Deletion date",
+    "actions": "Actions",
+    "restore": "Restore",
+    "delete_permanently": "Delete permanently",
+    "empty_confirm": "Are you sure you want to empty the trash? This will permanently delete all items."
+  },
   "auth": {
     "login_title": "Sign in",
     "username": "Username",

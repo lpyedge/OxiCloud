@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use crate::domain::entities::file::File;
 
 /// DTO for file responses
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FileDto {
     /// File ID
     pub id: String,

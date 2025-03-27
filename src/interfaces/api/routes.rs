@@ -23,6 +23,7 @@ use crate::application::services::file_service::FileService;
 use crate::application::services::i18n_application_service::I18nApplicationService;
 use crate::application::services::batch_operations::BatchOperationService;
 use crate::application::ports::trash_ports::TrashUseCase;
+use crate::application::ports::inbound::SearchUseCase;
 
 use crate::interfaces::api::handlers::folder_handler::FolderHandler;
 use crate::interfaces::api::handlers::file_handler::FileHandler;
@@ -38,6 +39,7 @@ pub fn create_api_routes(
     file_service: Arc<FileService>,
     i18n_service: Option<Arc<I18nApplicationService>>,
     trash_service: Option<Arc<dyn TrashUseCase>>,
+    search_service: Option<Arc<dyn SearchUseCase>>,
 ) -> Router<crate::common::di::AppState> {
     // Create a simplified AppState for the trash view
     // Setup required components for repository construction
@@ -99,6 +101,7 @@ pub fn create_api_routes(
                 Arc::new(crate::application::services::i18n_application_service::I18nApplicationService::dummy())
             ),
             trash_service: trash_service.clone(), // Include the trash service here too for consistency
+            search_service: search_service.clone(), // Include the search service
         },
         db_pool: None,
         auth_service: None,
@@ -265,11 +268,28 @@ pub fn create_api_routes(
         .route("/folders/get", post(batch_handler::get_folders_batch))
         .with_state(batch_handler_state);
     
+    // Create search routes if the service is available
+    let search_router = if search_service.is_some() {
+        use crate::interfaces::api::handlers::search_handler::SearchHandler;
+        
+        Router::new()
+            // Simple search with query parameters
+            .route("/", get(SearchHandler::search_files_get))
+            // Advanced search with full criteria object
+            .route("/advanced", post(SearchHandler::search_files_post))
+            // Clear search cache
+            .route("/cache", delete(SearchHandler::clear_search_cache))
+            .with_state(app_state.clone())
+    } else {
+        Router::new()
+    };
+    
     // Create a router without the i18n routes
     let mut router = Router::new()
         .nest("/folders", folders_router)
         .nest("/files", files_router)
-        .nest("/batch", batch_router);
+        .nest("/batch", batch_router)
+        .nest("/search", search_router);
         
     // Re-enable trash routes to make the trash view work
     if let Some(trash_service_ref) = trash_service.clone() {

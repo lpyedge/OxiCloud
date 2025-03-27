@@ -14,6 +14,7 @@ const app = {
     moveDialogMode: 'file',         // Move dialog mode: 'file' or 'folder'
     isTrashView: false,    // Whether we're in trash view
     currentSection: 'files', // Current section: 'files' or 'trash'
+    isSearchMode: false,    // Whether we're in search mode
 };
 
 // DOM elements
@@ -34,11 +35,6 @@ function initApp() {
     // Setup event listeners
     setupEventListeners();
     
-    // Load initial view
-    app.currentPath = '';
-    ui.updateBreadcrumb('');
-    loadFiles();
-    
     // Initialize file renderer if available
     if (window.fileRenderer) {
         console.log('Using optimized file renderer');
@@ -46,8 +42,26 @@ function initApp() {
         console.log('Using standard file rendering');
     }
     
-    // Check authentication
-    checkAuthentication();
+    // Wait for translations to load before checking authentication
+    if (window.i18n && window.i18n.isLoaded && window.i18n.isLoaded()) {
+        // Translations already loaded, proceed with authentication
+        checkAuthentication();
+    } else {
+        // Wait for translations to be loaded before proceeding
+        console.log('Waiting for translations to load...');
+        window.addEventListener('translationsLoaded', () => {
+            console.log('Translations loaded, proceeding with authentication');
+            checkAuthentication();
+        });
+        
+        // Set a timeout as a fallback in case translations take too long
+        setTimeout(() => {
+            if (!window.i18n || !window.i18n.isLoaded || !window.i18n.isLoaded()) {
+                console.warn('Translations loading timeout, proceeding with authentication anyway');
+                checkAuthentication();
+            }
+        }, 3000); // 3 second timeout
+    }
 }
 
 /**
@@ -68,6 +82,7 @@ function cacheElements() {
     elements.actionsBar = document.querySelector('.actions-bar');
     elements.navItems = document.querySelectorAll('.nav-item');
     elements.trashBtn = document.querySelector('.nav-item:nth-child(5)'); // The trash nav item
+    elements.searchInput = document.querySelector('.search-container input');
 }
 
 /**
@@ -76,6 +91,30 @@ function cacheElements() {
 function setupEventListeners() {
     // Set up drag and drop
     ui.setupDragAndDrop();
+    
+    // Search input
+    elements.searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const query = elements.searchInput.value.trim();
+            if (query) {
+                performSearch(query);
+            } else if (app.isSearchMode) {
+                // If search is empty and we're in search mode, return to normal view
+                app.isSearchMode = false;
+                app.currentPath = '';
+                ui.updateBreadcrumb('');
+                loadFiles();
+            }
+        }
+    });
+    
+    // Search button
+    document.getElementById('search-button').addEventListener('click', () => {
+        const query = elements.searchInput.value.trim();
+        if (query) {
+            performSearch(query);
+        }
+    });
     
     // Upload button
     elements.uploadBtn.addEventListener('click', () => {
@@ -328,11 +367,16 @@ async function loadTrashItems() {
             <div class="list-header">
                 <div data-i18n="files.name">Nombre</div>
                 <div data-i18n="files.type">Tipo</div>
-                <div data-i18n="files.original_location">Ubicación original</div>
-                <div data-i18n="files.deleted_date">Fecha eliminación</div>
-                <div data-i18n="files.actions">Acciones</div>
+                <div data-i18n="trash.original_location">Ubicación original</div>
+                <div data-i18n="trash.deleted_date">Fecha eliminación</div>
+                <div data-i18n="trash.actions">Acciones</div>
             </div>
         `;
+        
+        // Translate the header if i18n is available
+        if (window.i18n && window.i18n.translatePage) {
+            window.i18n.translatePage();
+        }
         
         // Update breadcrumb for trash
         ui.updateBreadcrumb(window.i18n ? window.i18n.t('nav.trash') : 'Papelera');
@@ -394,10 +438,10 @@ function addTrashItemToView(item) {
         <div class="file-name">${item.name}</div>
         <div class="file-info">${typeLabel} - ${formattedDate}</div>
         <div class="trash-actions">
-            <button class="btn-restore" title="Restaurar">
+            <button class="btn-restore" title="${window.i18n ? window.i18n.t('trash.restore') : 'Restaurar'}">
                 <i class="fas fa-undo"></i>
             </button>
-            <button class="btn-delete" title="Eliminar permanentemente">
+            <button class="btn-delete" title="${window.i18n ? window.i18n.t('trash.delete_permanently') : 'Eliminar permanentemente'}">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -438,10 +482,10 @@ function addTrashItemToView(item) {
         <div class="path-cell">${item.original_path || '--'}</div>
         <div class="date-cell">${formattedDate}</div>
         <div class="actions-cell">
-            <button class="btn-restore" title="Restaurar">
+            <button class="btn-restore" title="${window.i18n ? window.i18n.t('trash.restore') : 'Restaurar'}">
                 <i class="fas fa-undo"></i>
             </button>
-            <button class="btn-delete" title="Eliminar permanentemente">
+            <button class="btn-delete" title="${window.i18n ? window.i18n.t('trash.delete_permanently') : 'Eliminar permanentemente'}">
                 <i class="fas fa-trash"></i>
             </button>
         </div>
@@ -465,11 +509,70 @@ function addTrashItemToView(item) {
     elements.filesListView.appendChild(listElement);
 }
 
+/**
+ * Perform search with the given query
+ * @param {string} query - Search query
+ */
+async function performSearch(query) {
+    console.log(`Performing search for: "${query}"`);
+    
+    try {
+        // Update UI to indicate search mode
+        app.isSearchMode = true;
+        
+        // Set breadcrumb for search
+        ui.updateBreadcrumb(`Búsqueda: "${query}"`);
+        
+        // Prepare search options
+        const options = {
+            recursive: true, // Search in all subfolders
+            limit: 100      // Limit results for performance
+        };
+        
+        // Always restrict search to the user's current folder context
+        // This ensures users can't search outside their personal folder
+        if (!app.isTrashView) {
+            // If we're in a subfolder, search from there, otherwise use the user's home folder
+            options.folder_id = app.currentPath;
+            
+            // Always include folder_id even if it's the root of user's home folder
+            // so user cannot search outside their allowed scope
+            if (!options.folder_id || options.folder_id === '') {
+                // Fall back to user's home folder - we should never be here
+                // because findUserHomeFolder should have set app.currentPath
+                console.warn("Search without folder_id - this shouldn't happen with proper user context");
+                
+                // Try to get folder from localStorage if available
+                const USER_DATA_KEY = 'oxicloud_user';
+                const userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+                if (userData.username) {
+                    console.log("Retrieving home folder for user before search");
+                    await findUserHomeFolder(userData.username);
+                    options.folder_id = app.currentPath;
+                }
+            }
+        }
+        
+        console.log(`Searching with options:`, options);
+        
+        // Perform the search
+        const searchResults = await window.search.searchFiles(query, options);
+        
+        // Display search results
+        window.search.displaySearchResults(searchResults);
+        
+    } catch (error) {
+        console.error('Search error:', error);
+        window.ui.showNotification('Error', 'Error al realizar la búsqueda');
+    }
+}
+
 // Expose needed functions to global scope
 window.app = app;
 window.loadFiles = loadFiles;
 window.loadTrashItems = loadTrashItems;
 window.formatFileSize = formatFileSize;
+window.performSearch = performSearch;
 
 // Set up global selectFolder function for navigation
 window.selectFolder = (id, name) => {
@@ -479,7 +582,7 @@ window.selectFolder = (id, name) => {
 };
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated and load user's home folder
  */
 function checkAuthentication() {
     // Nombres de variables según auth.js
@@ -505,6 +608,88 @@ function checkAuthentication() {
         if (userAvatar) {
             userAvatar.textContent = userInitials;
         }
+        
+        // Find and load the user's home folder
+        findUserHomeFolder(userData.username);
+    } else {
+        // If no user data, fallback to standard load
+        app.currentPath = '';
+        ui.updateBreadcrumb('');
+        loadFiles();
+    }
+}
+
+/**
+ * Find the user's home folder and load it
+ * @param {string} username - The current user's username
+ */
+async function findUserHomeFolder(username) {
+    try {
+        console.log("Finding home folder for user:", username);
+        
+        // First, load all folders at the root
+        const response = await fetch('/api/folders');
+        if (!response.ok) {
+            throw new Error(`Error loading folders: ${response.status}`);
+        }
+        
+        const folders = await response.json();
+        const folderList = Array.isArray(folders) ? folders : [];
+        
+        // Look for a folder with a name pattern that matches the user's home folder
+        // Typically named "Mi Carpeta - username"
+        const homeFolderPattern = `Mi Carpeta - ${username}`;
+        let homeFolder = folderList.find(folder => folder.name === homeFolderPattern);
+        
+        // If exact match not found, try a more flexible match
+        if (!homeFolder) {
+            homeFolder = folderList.find(folder => 
+                folder.name.toLowerCase().includes(username.toLowerCase()) || 
+                folder.name.startsWith('Mi Carpeta -')
+            );
+        }
+        
+        if (homeFolder) {
+            console.log(`Found user's home folder: ${homeFolder.name} (${homeFolder.id})`);
+            
+            // Store the home folder ID and name in the app state
+            // This is used for breadcrumb navigation and restricting user access
+            app.userHomeFolderId = homeFolder.id;
+            app.userHomeFolderName = homeFolder.name;
+            
+            // Set this as the current path and load its contents
+            app.currentPath = homeFolder.id;
+            ui.updateBreadcrumb(homeFolder.name);
+            loadFiles();
+        } else {
+            console.warn("Could not find user's home folder, fallback to first folder or root");
+            
+            // If we can't find a specific home folder but there are folders, 
+            // use the first folder as the user's home
+            if (folderList.length > 0) {
+                const fallbackFolder = folderList[0];
+                console.log(`Using first folder as fallback: ${fallbackFolder.name} (${fallbackFolder.id})`);
+                
+                app.userHomeFolderId = fallbackFolder.id;
+                app.userHomeFolderName = fallbackFolder.name;
+                app.currentPath = fallbackFolder.id;
+                ui.updateBreadcrumb(fallbackFolder.name);
+                loadFiles();
+            } else {
+                // No folders at all - this is an edge case
+                console.warn("No folders found, using root");
+                app.currentPath = '';
+                ui.updateBreadcrumb('');
+                loadFiles();
+            }
+        }
+    } catch (error) {
+        console.error('Error finding user home folder:', error);
+        
+        // Fall back to loading root in case of error
+        app.currentPath = '';
+        ui.updateBreadcrumb('');
+        loadFiles();
     }
 }
 
