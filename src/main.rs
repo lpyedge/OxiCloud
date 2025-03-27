@@ -303,7 +303,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         
         async fn restore_from_trash(&self, file_id: &str, original_path: &str) -> domain::repositories::file_repository::FileRepositoryResult<()> {
-            use crate::domain::services::path_service::StoragePath;
+            
             
             tracing::info!("Restoring file from trash: {} to {}", file_id, original_path);
             
@@ -551,7 +551,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let metadata_manager = Arc::new(infrastructure::repositories::FileMetadataManager::default());
     let path_resolver_stub = Arc::new(infrastructure::repositories::FilePathResolver::default_stub());
     
-    let mut repository_services = common::di::RepositoryServices {
+    let repository_services = common::di::RepositoryServices {
         folder_repository: Arc::new(FolderFsRepository::new(
             storage_path.clone(),
             storage_mediator_stub.clone(),

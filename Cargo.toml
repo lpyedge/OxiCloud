@@ -11,37 +11,37 @@ harness = true
 axum = { version = "0.8.1", features = ["multipart", "http1", "tokio"] }
 tokio = { version = "1.44.1", features = ["full"] }
 tokio-util = { version = "0.7.14", features = ["io", "codec"] }
-tokio-stream = { version = "0.1.15", features = ["fs"] }
-bytes = "1.6.0"
-tempfile = "3.10.1"
+tokio-stream = { version = "0.1.17", features = ["fs"] }
+bytes = "1.10.1"
+tempfile = "3.19.1"
 tower = "0.5.2"
 tower-http = { version = "0.6.2", features = ["fs", "compression-gzip", "trace", "cors", "add-extension", "request-id"] }
-flate2 = "1.0.28"
+flate2 = "1.1.0"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-chrono = { version = "0.4.37", features = ["serde"] }
-http-body = "0.4.5"
+chrono = { version = "0.4.40", features = ["serde"] }
+http-body = "0.4.6"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 futures = "0.3.31"
-async-stream = "0.3.5"
+async-stream = "0.3.6"
 mime_guess = "2.0.5"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
 async-trait = "0.1.88"
 thiserror = "2.0.12"
-reqwest = { version = "0.12.5", features = ["json", "multipart"] }
+reqwest = { version = "0.12.15", features = ["json", "multipart"] }
 mockall = { version = "0.12.1", optional = true }
 rand = "0.8.5"
-pin-project-lite = "0.2.13"
-sqlx = { version = "0.7.3", features = ["postgres", "runtime-tokio", "tls-rustls", "chrono", "uuid", "json"] }
-anyhow = "1.0.81"
-jsonwebtoken = "9.2.0"
+pin-project-lite = "0.2.16"
+sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio", "tls-rustls", "chrono", "uuid", "json"] }
+anyhow = "1.0.97"
+jsonwebtoken = "9.3.1"
 argon2 = "0.5.3"
 rand_core = { version = "0.6.4", features = ["std"] }
-time = "0.3.34"
-axum-extra = { version = "0.9.2", features = ["cookie"] }
+time = "0.3.41"
+axum-extra = { version = "0.9.6", features = ["cookie"] }
 axum-server = "0.6.0"
-hyper = { version = "1.2.0", features = ["full"] }
+hyper = { version = "1.6.0", features = ["full"] }
 
 [features]
 default = []

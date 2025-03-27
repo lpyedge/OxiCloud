@@ -19,5 +19,4 @@ pub use file_metadata_manager::FileMetadataManager;
 pub use file_path_resolver::FilePathResolver;
 pub use file_fs_read_repository::FileFsReadRepository;
 pub use file_fs_write_repository::FileFsWriteRepository;
-pub use trash_fs_repository::TrashFsRepository;
 pub use pg::{UserPgRepository, SessionPgRepository};
