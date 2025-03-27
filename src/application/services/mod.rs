@@ -11,6 +11,7 @@ pub mod file_management_service;
 pub mod file_use_case_factory;
 pub mod auth_application_service;
 pub mod trash_service;
+pub mod search_service;
 
 #[cfg(test)]
 mod trash_service_test;
@@ -21,3 +22,4 @@ pub use file_retrieval_service::FileRetrievalService;
 pub use file_management_service::FileManagementService;
 pub use file_use_case_factory::AppFileUseCaseFactory;
 pub use trash_service::TrashService;
+pub use search_service::SearchService;

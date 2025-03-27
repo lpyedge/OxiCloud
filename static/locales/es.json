@@ -67,6 +67,16 @@
   "breadcrumb": {
     "home": "Inicio"
   },
+  "trash": {
+    "empty_trash": "Vaciar papelera",
+    "empty_state": "La papelera está vacía",
+    "original_location": "Ubicación original",
+    "deleted_date": "Fecha de eliminación",
+    "actions": "Acciones",
+    "restore": "Restaurar",
+    "delete_permanently": "Eliminar permanentemente",
+    "empty_confirm": "¿Estás seguro de que quieres vaciar la papelera? Esta acción eliminará permanentemente todos los elementos."
+  },
   "auth": {
     "login_title": "Iniciar sesión",
     "username": "Usuario",

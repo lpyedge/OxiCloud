@@ -419,7 +419,8 @@ const fileOps = {
      * @returns {Promise<boolean>} - Éxito de la operación
      */
     async emptyTrash() {
-        if (!confirm('¿Estás seguro de que quieres vaciar la papelera? Esta acción eliminará permanentemente todos los elementos y no se puede deshacer.')) {
+        const confirmMsg = window.i18n ? window.i18n.t('trash.empty_confirm') : '¿Estás seguro de que quieres vaciar la papelera? Esta acción eliminará permanentemente todos los elementos.';
+        if (!confirm(confirmMsg)) {
             return false;
         }
         

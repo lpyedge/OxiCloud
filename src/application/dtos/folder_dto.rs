@@ -26,7 +26,7 @@ pub struct MoveFolderDto {
 }
 
 /// DTO for folder responses
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FolderDto {
     /// Folder ID
     pub id: String,

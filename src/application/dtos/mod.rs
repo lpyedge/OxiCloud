@@ -4,4 +4,5 @@ pub mod i18n_dto;
 pub mod pagination;
 pub mod user_dto;
 pub mod trash_dto;
+pub mod search_dto;
 

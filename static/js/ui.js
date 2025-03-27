@@ -190,19 +190,54 @@ const ui = {
     updateBreadcrumb(folderName) {
         const breadcrumb = document.querySelector('.breadcrumb');
         breadcrumb.innerHTML = '';
-
+        
+        // Get user info to help determine home folder
+        const USER_DATA_KEY = 'oxicloud_user';
+        const userData = JSON.parse(localStorage.getItem(USER_DATA_KEY) || '{}');
+        const username = userData.username || '';
+        
+        // Create the home item - for users, this is their personal folder
         const homeItem = document.createElement('span');
         homeItem.className = 'breadcrumb-item';
-        homeItem.textContent = window.i18n ? window.i18n.t('breadcrumb.home') : 'Home';
-        homeItem.addEventListener('click', () => {
-            window.app.currentPath = '';
-            this.updateBreadcrumb('');
-            window.loadFiles();
-        });
-
+        
+        // Helper function to safely get translation text
+        const getTranslatedText = (key, defaultValue) => {
+            if (!window.i18n || !window.i18n.t) return defaultValue;
+            return window.i18n.t(key);
+        };
+        
+        // Set appropriate text for home item
+        if (username && folderName && folderName.includes(username)) {
+            // If the current folder is the user's home folder, label it as "Home"
+            homeItem.textContent = getTranslatedText('breadcrumb.home', 'Home');
+        } else if (folderName && folderName.startsWith('Mi Carpeta')) {
+            // If the current folder is another user's home folder or a special folder, use its name
+            homeItem.textContent = folderName;
+        } else {
+            // Default - use "Home" label
+            homeItem.textContent = getTranslatedText('breadcrumb.home', 'Home');
+            
+            // For searching, we might have a custom breadcrumb text
+            if (folderName && folderName.startsWith('Búsqueda:')) {
+                // We're in search mode - don't add click handler
+                breadcrumb.appendChild(homeItem);
+                return;
+            }
+        }
+        
+        // Add click handler - but only if we have a user home folder to return to
+        if (window.app.userHomeFolderId) {
+            homeItem.addEventListener('click', () => {
+                window.app.currentPath = window.app.userHomeFolderId;
+                this.updateBreadcrumb(window.app.userHomeFolderName || 'Home');
+                window.loadFiles();
+            });
+        }
+        
         breadcrumb.appendChild(homeItem);
 
-        if (folderName) {
+        // If we have a subfolder, add it to the breadcrumb
+        if (folderName && !folderName.startsWith('Mi Carpeta') && !folderName.startsWith('Búsqueda:')) {
             const separator = document.createElement('span');
             separator.className = 'breadcrumb-separator';
             separator.textContent = '>';

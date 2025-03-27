@@ -19,7 +19,7 @@ use crate::application::services::file_service::FileService;
 use crate::application::services::i18n_application_service::I18nApplicationService;
 use crate::application::ports::trash_ports::TrashUseCase;
 use crate::application::services::storage_mediator::{StorageMediator, FileSystemStorageMediator};
-use crate::application::ports::inbound::{FileUseCase, FolderUseCase};
+use crate::application::ports::inbound::{FileUseCase, FolderUseCase, SearchUseCase};
 use crate::application::ports::outbound::{FileStoragePort, FolderStoragePort};
 use crate::application::ports::file_ports::{FileUploadUseCase, FileRetrievalUseCase, FileManagementUseCase, FileUseCaseFactory};
 use crate::application::ports::storage_ports::{FileReadPort, FileWritePort};
@@ -226,6 +226,9 @@ impl AppServiceFactory {
         // Servicio de papelera (deshabilitado temporalmente)
         let trash_service = None; // La función de papelera está deshabilitada por defecto
         
+        // Servicio de búsqueda (deshabilitado por defecto)
+        let search_service = None; // La función de búsqueda se activa según la configuración
+        
         ApplicationServices {
             folder_service,
             file_service,
@@ -235,6 +238,7 @@ impl AppServiceFactory {
             file_use_case_factory,
             i18n_service,
             trash_service,
+            search_service,
         }
     }
 }
@@ -276,6 +280,7 @@ pub struct ApplicationServices {
     pub file_use_case_factory: Arc<dyn FileUseCaseFactory>,
     pub i18n_service: Arc<I18nApplicationService>,
     pub trash_service: Option<Arc<dyn TrashUseCase>>,
+    pub search_service: Option<Arc<dyn SearchUseCase>>,
 }
 
 /// Contenedor para servicios de autenticación
@@ -698,7 +703,7 @@ impl Default for AppState {
             }
         }
         
-        struct DummyI18nApplicationService {};
+        struct DummyI18nApplicationService {}
         
         // Need to implement the actual service to match the type signature in DI container
         impl DummyI18nApplicationService {
@@ -746,6 +751,22 @@ impl Default for AppState {
             trash_repository: None, // No trash repository in minimal mode
         };
         
+        // Create dummy search use case
+        struct DummySearchUseCase;
+        #[async_trait::async_trait]
+        impl crate::application::ports::inbound::SearchUseCase for DummySearchUseCase {
+            async fn search(
+                &self, 
+                _criteria: crate::application::dtos::search_dto::SearchCriteriaDto
+            ) -> Result<crate::application::dtos::search_dto::SearchResultsDto, crate::common::errors::DomainError> {
+                Ok(crate::application::dtos::search_dto::SearchResultsDto::empty())
+            }
+            
+            async fn clear_search_cache(&self) -> Result<(), crate::common::errors::DomainError> {
+                Ok(())
+            }
+        }
+
         // Create application services
         let application_services = ApplicationServices {
             folder_service,
@@ -756,6 +777,7 @@ impl Default for AppState {
             file_use_case_factory,
             i18n_service: Arc::new(DummyI18nApplicationService::dummy()),
             trash_service: None, // No trash service in minimal mode
+            search_service: Some(Arc::new(DummySearchUseCase) as Arc<dyn crate::application::ports::inbound::SearchUseCase>),
         };
         
         // Return a minimal app state

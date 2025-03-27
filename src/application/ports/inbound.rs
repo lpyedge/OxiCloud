@@ -5,6 +5,7 @@ use futures::Stream;
 
 use crate::application::dtos::file_dto::FileDto;
 use crate::application::dtos::folder_dto::{CreateFolderDto, FolderDto, MoveFolderDto, RenameFolderDto};
+use crate::application::dtos::search_dto::{SearchCriteriaDto, SearchResultsDto};
 use crate::common::errors::DomainError;
 
 /// Puerto primario para operaciones de archivos
@@ -70,8 +71,33 @@ pub trait FolderUseCase: Send + Sync + 'static {
     async fn delete_folder(&self, id: &str) -> Result<(), DomainError>;
 }
 
+/**
+ * Puerto primario para búsqueda de archivos y carpetas
+ * 
+ * Define las operaciones relacionadas con la búsqueda avanzada de
+ * archivos y carpetas basándose en diversos criterios.
+ */
+#[async_trait]
+pub trait SearchUseCase: Send + Sync + 'static {
+    /**
+     * Realiza una búsqueda basada en los criterios especificados
+     * 
+     * @param criteria Criterios de búsqueda que incluyen texto, fechas, tamaños, etc.
+     * @return Resultados de la búsqueda que contienen archivos y carpetas coincidentes
+     */
+    async fn search(&self, criteria: SearchCriteriaDto) -> Result<SearchResultsDto, DomainError>;
+    
+    /**
+     * Limpia la caché de resultados de búsqueda
+     * 
+     * @return Resultado indicando éxito o error
+     */
+    async fn clear_search_cache(&self) -> Result<(), DomainError>;
+}
+
 /// Factory para crear implementaciones de casos de uso
 pub trait UseCaseFactory {
     fn create_file_use_case(&self) -> Arc<dyn FileUseCase>;
     fn create_folder_use_case(&self) -> Arc<dyn FolderUseCase>;
+    fn create_search_use_case(&self) -> Arc<dyn SearchUseCase>;
 }
