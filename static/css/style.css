@@ -888,61 +888,620 @@ body {
     color: #718096;
 }
 
-/* Compartir diálogo */
-.share-dialog {
-    position: absolute;
-    top: 50%;
-    right: 50px;
-    width: 250px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
-    padding: 15px;
+/* Dialogs (Rename, Move, Share) */
+.rename-dialog, .share-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
 }
 
-.share-title {
+.rename-dialog-content, .share-dialog-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.share-dialog-content {
+    width: 500px;
+}
+
+.rename-dialog-header, .share-dialog-header {
+    font-size: 18px;
     font-weight: bold;
     margin-bottom: 15px;
-    color: #2d3748;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e6ed;
 }
 
-.share-user {
+.rename-dialog input, .share-dialog input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.rename-dialog-buttons, .share-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Share dialog specific styles */
+.shared-item-info {
+    padding: 10px 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.share-options h3, #existing-shares-section h3, #new-share-section h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.permission-options {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+}
+
+.permission-option {
     display: flex;
     align-items: center;
+    gap: 5px;
+}
+
+.existing-share-item {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    padding: 10px;
     margin-bottom: 10px;
 }
 
-.user-avatar-small {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background-color: #dfe4ea;
+.share-url {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 5px;
+    color: #1565c0;
+}
+
+.share-info {
+    font-size: 11px;
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    color: #757575;
+}
+
+.share-protected {
+    color: #1565c0;
+}
+
+.share-expiration {
+    color: #b71c1c;
+}
+
+.share-actions {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.share-link-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.btn-small {
+    font-size: 12px;
+    padding: 5px 10px;
+}
+
+#notification-message {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+/* Shared Resources Page Styles */
+/* Header styles for shared page */
+header {
+    background-color: white;
+    border-bottom: 1px solid #e6e6e6;
+    padding: 15px 20px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-button {
+    padding: 8px 15px;
+    background-color: #f0f3f7;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.header-button:hover {
+    background-color: #e6e9ed;
+}
+
+/* Shared page container */
+.shared-page-container {
+    max-width: 1280px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+.shared-header {
+    margin-bottom: 25px;
+}
+
+.shared-header h2 {
+    font-size: 24px;
+    color: #2d3748;
+    margin-bottom: 8px;
+}
+
+.shared-header p {
+    color: #718096;
+    font-size: 16px;
+}
+
+/* Filters and search */
+.shared-filters {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filter-group label {
+    font-size: 14px;
+    color: #4a5568;
+}
+
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: white;
+    font-size: 14px;
+}
+
+.search-box {
+    display: flex;
+    gap: 10px;
+}
+
+.search-box input {
+    padding: 8px 15px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 250px;
+}
+
+.search-box button {
+    padding: 8px 15px;
+    background-color: #ff5e3a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.search-box button:hover {
+    background-color: #e64a29;
+}
+
+/* Shared items list */
+.shared-list-container {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.shared-list {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.shared-list thead th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #2d3748;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e0e6ed;
+}
+
+.shared-list tbody td {
+    padding: 15px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.shared-item-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.shared-item-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    margin-right: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
-.user-name {
-    font-size: 13px;
+.action-btn:hover {
+    background-color: #f0f8ff;
+    border-color: #90cdf4;
+}
+
+.action-icon {
+    font-size: 14px;
+}
+
+/* Empty state */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.empty-state-icon {
+    font-size: 40px;
+    margin-bottom: 20px;
+    color: #a0aec0;
+}
+
+.empty-state h3 {
+    font-size: 18px;
+    color: #2d3748;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: #718096;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Dialog styles */
+.dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog.active {
+    display: flex;
+}
+
+.dialog-content {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 500px;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.dialog-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.dialog-header h3 {
+    font-size: 18px;
+    color: #2d3748;
+    margin: 0;
+}
+
+.close-dialog-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #a0aec0;
+}
+
+.dialog-body {
+    padding: 20px;
+}
+
+/* Share dialog specific styles */
+.share-item-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.item-icon {
+    font-size: 24px;
+}
+
+.item-name {
+    font-size: 16px;
+    font-weight: 500;
     color: #2d3748;
 }
 
-.add-user {
+.share-link-section {
+    margin-bottom: 20px;
+}
+
+.share-link-container {
+    display: flex;
+    gap: 10px;
+}
+
+.share-link-container input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.share-link-container button {
+    padding: 0 15px;
+    background-color: #4a5568;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.share-link-container button:hover {
+    background-color: #2d3748;
+}
+
+.share-settings {
+    margin-bottom: 20px;
+}
+
+.share-setting {
+    margin-bottom: 15px;
+}
+
+.share-setting label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.permissions-options {
+    display: flex;
+    gap: 20px;
+}
+
+.permissions-options label {
+    font-weight: normal;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 8px;
-    margin-top: 10px;
-    background-color: #f0f3f7;
-    border-radius: 50px;
+    gap: 5px;
+}
+
+.password-setting, .expiration-setting {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.password-setting input[type="checkbox"], .expiration-setting input[type="checkbox"] {
+    width: auto;
+}
+
+.password-setting input[type="password"], .expiration-setting input[type="date"] {
+    flex-grow: 1;
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.password-setting button {
+    padding: 8px 12px;
+    background-color: #4a5568;
+    color: white;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 13px;
-    color: #718096;
+    font-size: 12px;
+    transition: background-color 0.2s;
+}
+
+.password-setting button:hover {
+    background-color: #2d3748;
+}
+
+.share-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.form-group input, .form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Button styles */
+.button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.primary {
+    background-color: #ff5e3a;
+    color: white;
+}
+
+.primary:hover {
+    background-color: #e64a29;
+}
+
+.secondary {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.secondary:hover {
+    background-color: #cbd5e0;
+}
+
+.danger {
+    background-color: #f56565;
+    color: white;
+}
+
+.danger:hover {
+    background-color: #e53e3e;
+}
+
+/* Notification banner */
+.notification-banner {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 400px;
+    z-index: 2000;
+    transform: translateY(-100px);
+    opacity: 0;
+    transition: transform 0.3s, opacity 0.3s;
+}
+
+.notification-banner.active {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.notification-banner.success {
+    border-left: 4px solid #48bb78;
+}
+
+.notification-banner.error {
+    border-left: 4px solid #f56565;
+}
+
+.close-notification-btn {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #a0aec0;
+    margin-left: 10px;
 }
 
 /* Responsive */
@@ -967,6 +1526,23 @@ body {
 
     .nav-item span {
         display: none;
+    }
+    
+    /* Responsive styles for shared page */
+    .shared-filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .shared-list thead th:nth-child(4),
+    .shared-list thead th:nth-child(5),
+    .shared-list tbody td:nth-child(4),
+    .shared-list tbody td:nth-child(5) {
+        display: none;
+    }
+    
+    .dialog-content {
+        width: 95%;
     }
 }
 

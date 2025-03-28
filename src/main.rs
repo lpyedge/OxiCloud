@@ -45,10 +45,12 @@ use application::services::folder_service::FolderService;
 use application::services::file_service::FileService;
 use application::services::i18n_application_service::I18nApplicationService;
 use application::services::storage_mediator::FileSystemStorageMediator;
+use application::services::share_service::ShareService;
 use domain::services::path_service::PathService;
 use infrastructure::repositories::folder_fs_repository::FolderFsRepository;
 use infrastructure::repositories::file_fs_repository::FileFsRepository;
 use infrastructure::repositories::parallel_file_processor::ParallelFileProcessor;
+use infrastructure::repositories::share_fs_repository::ShareFsRepository;
 use infrastructure::services::file_system_i18n_service::FileSystemI18nService;
 use infrastructure::services::id_mapping_service::IdMappingService;
 use infrastructure::services::id_mapping_optimizer::IdMappingOptimizer;
@@ -591,6 +593,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("Search service initialized with caching (TTL: 300s, max entries: 1000)");
         Some(search_service)
     };
+    
+    // Initialize share repository and service if enabled
+    let share_service: Option<Arc<dyn application::ports::share_ports::ShareUseCase>> = if config.features.enable_file_sharing {
+        let share_repository = Arc::new(ShareFsRepository::new(
+            Arc::new(config.clone())
+        ));
+        
+        let share_service = Arc::new(ShareService::new(
+            Arc::new(config.clone()),
+            share_repository,
+            file_repository.clone(),
+            folder_repository.clone()
+        ));
+        
+        tracing::info!("File sharing service initialized successfully");
+        Some(share_service)
+    } else {
+        tracing::info!("File sharing service is disabled in configuration");
+        None
+    };
 
     let application_services = common::di::ApplicationServices {
         folder_service: folder_service.clone(),
@@ -602,6 +624,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         i18n_service: i18n_service.clone(),
         trash_service: trash_service.clone(),
         search_service: search_service.clone(),
+        share_service: share_service.clone(),
     };
     
     // Create the AppState without Arc first
@@ -626,7 +649,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(app_state);
 
     // Build application router
-    let api_routes = create_api_routes(folder_service, file_service, Some(i18n_service), trash_service, search_service);
+    let api_routes = create_api_routes(folder_service, file_service, Some(i18n_service), trash_service, search_service, share_service);
     let web_routes = create_web_routes();
     
     // Build the app router

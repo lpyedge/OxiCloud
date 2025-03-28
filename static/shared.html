@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OxiCloud - Shared Resources</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo-container">
+                <img src="/oxicloud-logo.svg" alt="OxiCloud Logo" class="logo">
+                <h1>OxiCloud</h1>
+            </a>
+            <div class="header-actions">
+                <div class="language-selector">
+                    <select id="language-selector">
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+                <button id="go-to-files" class="header-button">
+                    <span data-i18n="shared.backToFiles">Back to Files</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="shared-page-container">
+        <div class="shared-header">
+            <h2 data-i18n="shared.pageTitle">Shared Resources</h2>
+            <p data-i18n="shared.pageDescription">Manage your shared files and folders</p>
+        </div>
+
+        <div class="shared-filters">
+            <div class="filter-group">
+                <label for="filter-type" data-i18n="shared.filterType">Type:</label>
+                <select id="filter-type">
+                    <option value="all" data-i18n="shared.filterAll">All</option>
+                    <option value="file" data-i18n="shared.filterFiles">Files</option>
+                    <option value="folder" data-i18n="shared.filterFolders">Folders</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="sort-by" data-i18n="shared.sortBy">Sort by:</label>
+                <select id="sort-by">
+                    <option value="name" data-i18n="shared.sortByName">Name</option>
+                    <option value="date" data-i18n="shared.sortByDate">Date shared</option>
+                    <option value="expiration" data-i18n="shared.sortByExpiration">Expiration</option>
+                </select>
+            </div>
+            <div class="search-box">
+                <input type="text" id="shared-search" placeholder="Search shared items...">
+                <button id="shared-search-btn"><span data-i18n="shared.search">Search</span></button>
+            </div>
+        </div>
+
+        <div class="shared-list-container">
+            <table class="shared-list">
+                <thead>
+                    <tr>
+                        <th data-i18n="shared.colName">Name</th>
+                        <th data-i18n="shared.colType">Type</th>
+                        <th data-i18n="shared.colDateShared">Date Shared</th>
+                        <th data-i18n="shared.colExpiration">Expiration</th>
+                        <th data-i18n="shared.colPermissions">Permissions</th>
+                        <th data-i18n="shared.colPassword">Password</th>
+                        <th data-i18n="shared.colActions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="shared-items-list">
+                    <!-- Shared items will be loaded here dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="empty-shared-state" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">📂</div>
+            <h3 data-i18n="shared.emptyStateTitle">No shared resources yet</h3>
+            <p data-i18n="shared.emptyStateDesc">When you share files or folders, they will appear here</p>
+            <a href="/" class="button primary" data-i18n="shared.goToFiles">Go to Files</a>
+        </div>
+    </main>
+
+    <!-- Share Link Dialog (for editing existing shares) -->
+    <div id="share-dialog" class="dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3 data-i18n="share.dialogTitle">Share Link</h3>
+                <button class="close-dialog-btn">&times;</button>
+            </div>
+            <div class="dialog-body">
+                <div class="share-item-info">
+                    <span id="share-dialog-icon" class="item-icon">📄</span>
+                    <span id="share-dialog-name" class="item-name">filename.ext</span>
+                </div>
+                
+                <div class="share-link-section">
+                    <label for="share-link-url" data-i18n="share.linkLabel">Share Link:</label>
+                    <div class="share-link-container">
+                        <input type="text" id="share-link-url" readonly>
+                        <button id="copy-link-btn" data-i18n="share.copyLink">Copy</button>
+                    </div>
+                </div>
+                
+                <div class="share-settings">
+                    <div class="share-setting">
+                        <label data-i18n="share.permissions">Permissions:</label>
+                        <div class="permissions-options">
+                            <label>
+                                <input type="checkbox" id="permission-read" checked>
+                                <span data-i18n="share.permissionRead">Read</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="permission-write">
+                                <span data-i18n="share.permissionWrite">Write</span>
+                            </label>
+                            <label>
+                                <input type="checkbox" id="permission-reshare">
+                                <span data-i18n="share.permissionReshare">Reshare</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="share-setting">
+                        <label for="share-password" data-i18n="share.password">Password Protection:</label>
+                        <div class="password-setting">
+                            <input type="checkbox" id="enable-password">
+                            <input type="password" id="share-password" placeholder="Enter password" disabled>
+                            <button id="generate-password" data-i18n="share.generatePassword">Generate</button>
+                        </div>
+                    </div>
+                    
+                    <div class="share-setting">
+                        <label for="share-expiration" data-i18n="share.expiration">Expiration Date:</label>
+                        <div class="expiration-setting">
+                            <input type="checkbox" id="enable-expiration">
+                            <input type="date" id="share-expiration" disabled>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="share-actions">
+                    <button id="update-share-btn" class="button primary" data-i18n="share.update">Update Share</button>
+                    <button id="remove-share-btn" class="button danger" data-i18n="share.remove">Remove Share</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Notification Dialog -->
+    <div id="share-notification-dialog" class="dialog">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3 data-i18n="share.notifyTitle">Send Notification</h3>
+                <button class="close-dialog-btn">&times;</button>
+            </div>
+            <div class="dialog-body">
+                <div class="share-item-info">
+                    <span id="notify-dialog-icon" class="item-icon">📄</span>
+                    <span id="notify-dialog-name" class="item-name">filename.ext</span>
+                </div>
+                
+                <div class="notification-form">
+                    <div class="form-group">
+                        <label for="notification-email" data-i18n="share.notifyEmailLabel">Email Address:</label>
+                        <input type="email" id="notification-email" placeholder="Enter recipient email">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notification-message" data-i18n="share.notifyMessageLabel">Message (optional):</label>
+                        <textarea id="notification-message" placeholder="Add a personal message" rows="3"></textarea>
+                    </div>
+                </div>
+                
+                <div class="notification-actions">
+                    <button id="send-notification-btn" class="button primary" data-i18n="share.notifySend">Send Notification</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Banner -->
+    <div id="notification-banner" class="notification-banner">
+        <span id="notification-message"></span>
+        <button id="close-notification" class="close-notification-btn">×</button>
+    </div>
+
+    <script src="/js/i18n.js"></script>
+    <script src="/js/languageSelector.js"></script>
+    <script src="/js/fileSharing.js"></script>
+    <script src="/js/shared.js"></script>
+</body>
+</html>

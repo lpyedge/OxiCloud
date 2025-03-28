@@ -12,6 +12,7 @@ pub mod file_use_case_factory;
 pub mod auth_application_service;
 pub mod trash_service;
 pub mod search_service;
+pub mod share_service;
 
 #[cfg(test)]
 mod trash_service_test;

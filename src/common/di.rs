@@ -239,6 +239,7 @@ impl AppServiceFactory {
             i18n_service,
             trash_service,
             search_service,
+            share_service: None, // No share service by default
         }
     }
 }
@@ -281,6 +282,7 @@ pub struct ApplicationServices {
     pub i18n_service: Arc<I18nApplicationService>,
     pub trash_service: Option<Arc<dyn TrashUseCase>>,
     pub search_service: Option<Arc<dyn SearchUseCase>>,
+    pub share_service: Option<Arc<dyn crate::application::ports::share_ports::ShareUseCase>>,
 }
 
 /// Contenedor para servicios de autenticación
@@ -300,6 +302,7 @@ pub struct AppState {
     pub db_pool: Option<Arc<PgPool>>,
     pub auth_service: Option<AuthServices>,
     pub trash_service: Option<Arc<dyn TrashUseCase>>,
+    pub share_service: Option<Arc<dyn crate::application::ports::share_ports::ShareUseCase>>,
 }
 
 impl Default for AppState {
@@ -768,6 +771,7 @@ impl Default for AppState {
             i18n_service: Arc::new(DummyI18nApplicationService::dummy()),
             trash_service: None, // No trash service in minimal mode
             search_service: Some(Arc::new(DummySearchUseCase) as Arc<dyn crate::application::ports::inbound::SearchUseCase>),
+            share_service: None, // No share service in minimal mode
         };
         
         // Return a minimal app state
@@ -778,6 +782,7 @@ impl Default for AppState {
             db_pool: None,
             auth_service: None,
             trash_service: None,
+            share_service: None,
         }
     }
 }
@@ -795,6 +800,7 @@ impl AppState {
             db_pool: None,
             auth_service: None,
             trash_service: None,
+            share_service: None,
         }
     }
     
@@ -810,6 +816,11 @@ impl AppState {
     
     pub fn with_trash_service(mut self, trash_service: Arc<dyn TrashUseCase>) -> Self {
         self.trash_service = Some(trash_service);
+        self
+    }
+    
+    pub fn with_share_service(mut self, share_service: Arc<dyn crate::application::ports::share_ports::ShareUseCase>) -> Self {
+        self.share_service = Some(share_service);
         self
     }
 }

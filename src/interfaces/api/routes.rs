@@ -24,10 +24,12 @@ use crate::application::services::i18n_application_service::I18nApplicationServi
 use crate::application::services::batch_operations::BatchOperationService;
 use crate::application::ports::trash_ports::TrashUseCase;
 use crate::application::ports::inbound::SearchUseCase;
+use crate::application::ports::share_ports::ShareUseCase;
 
 use crate::interfaces::api::handlers::folder_handler::FolderHandler;
 use crate::interfaces::api::handlers::file_handler::FileHandler;
 use crate::interfaces::api::handlers::i18n_handler::I18nHandler;
+// Eliminamos la importación de ShareHandler ya que ahora usamos directamente el servicio
 use crate::interfaces::api::handlers::batch_handler::{
     self, BatchHandlerState
 };
@@ -40,6 +42,7 @@ pub fn create_api_routes(
     i18n_service: Option<Arc<I18nApplicationService>>,
     trash_service: Option<Arc<dyn TrashUseCase>>,
     search_service: Option<Arc<dyn SearchUseCase>>,
+    share_service: Option<Arc<dyn ShareUseCase>>,
 ) -> Router<crate::common::di::AppState> {
     // Create a simplified AppState for the trash view
     // Setup required components for repository construction
@@ -72,7 +75,7 @@ pub fn create_api_routes(
         path_service.clone(),
     ));
     
-    let app_state = crate::common::di::AppState {
+    let mut app_state = crate::common::di::AppState {
         core: crate::common::di::CoreServices {
             path_service: path_service.clone(),
             cache_manager: Arc::new(crate::infrastructure::services::cache_manager::StorageCacheManager::default()),
@@ -102,10 +105,12 @@ pub fn create_api_routes(
             ),
             trash_service: trash_service.clone(), // Include the trash service here too for consistency
             search_service: search_service.clone(), // Include the search service
+            share_service: share_service.clone(), // Include the share service
         },
         db_pool: None,
         auth_service: None,
         trash_service: trash_service.clone(), // This is the important part - include the trash service
+        share_service: share_service.clone() // Include the share service for routes
     };
     // Inicializar el servicio de operaciones por lotes
     let batch_service = Arc::new(BatchOperationService::default(
@@ -284,12 +289,49 @@ pub fn create_api_routes(
         Router::new()
     };
     
+    // Implementaciones directas de handlers para compartir, sin depender de ShareHandler
+    
+    // Create routes for shared resources if the service is available
+    let share_router = if let Some(share_service) = share_service.clone() {
+        use crate::interfaces::api::handlers::share_handler;
+        
+        Router::new()
+            .route("/", post(share_handler::create_shared_link))
+            .route("/", get(share_handler::get_user_shares))
+            .route("/{id}", get(share_handler::get_shared_link))
+            .route("/{id}", put(share_handler::update_shared_link))
+            .route("/{id}", delete(share_handler::delete_shared_link))
+            .with_state(share_service.clone())
+    } else {
+        Router::new()
+    };
+    
+    // Public route for accessing shared links
+    let public_share_router = if let Some(share_service) = share_service.clone() {
+        use crate::interfaces::api::handlers::share_handler;
+        
+        Router::new()
+            .route("/{token}", get(share_handler::access_shared_item))
+            .route("/{token}/verify", post(share_handler::verify_shared_item_password))
+            .with_state(share_service.clone())
+    } else {
+        Router::new()
+    };
+
     // Create a router without the i18n routes
     let mut router = Router::new()
         .nest("/folders", folders_router)
         .nest("/files", files_router)
         .nest("/batch", batch_router)
-        .nest("/search", search_router);
+        .nest("/search", search_router)
+        .nest("/shares", share_router)
+        .nest("/s", public_share_router)
+        ;
+    
+    // Store the share service in app_state for future use
+    if let Some(share_service) = share_service.clone() {
+        app_state.share_service = Some(share_service);
+    }
         
     // Re-enable trash routes to make the trash view work
     if let Some(_trash_service_ref) = trash_service.clone() {

@@ -15,6 +15,10 @@ const app = {
     isTrashView: false,    // Whether we're in trash view
     currentSection: 'files', // Current section: 'files' or 'trash'
     isSearchMode: false,    // Whether we're in search mode
+    // File sharing related properties
+    shareDialogItem: null,          // Item being shared in share dialog
+    shareDialogItemType: null,      // Type of item being shared ('file' or 'folder')
+    notificationShareUrl: null      // URL for notification dialog
 };
 
 // DOM elements
@@ -29,8 +33,17 @@ function initApp() {
     // Cache DOM elements
     cacheElements();
     
-    // Create menus and dialogs
-    ui.initializeContextMenus();
+    // Initialize file sharing module first
+    if (window.fileSharing && window.fileSharing.init) {
+        window.fileSharing.init();
+    } else {
+        console.warn('fileSharing module not fully initialized');
+    }
+    
+    // Then create menus and dialogs after modules have initialized
+    setTimeout(() => {
+        ui.initializeContextMenus();
+    }, 100);
     
     // Setup event listeners
     setupEventListeners();
@@ -151,6 +164,13 @@ function setupEventListeners() {
             
             // Add active class to clicked item
             item.classList.add('active');
+            
+            // Check if this is the shared item
+            if (item.querySelector('span').getAttribute('data-i18n') === 'nav.shared') {
+                // Navigate to the shared page
+                window.location.href = '/shared.html';
+                return;
+            }
             
             // Check if this is the trash item
             if (item === elements.trashBtn) {

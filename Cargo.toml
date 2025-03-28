@@ -8,7 +8,7 @@ name = "file_operations"
 harness = true
 
 [dependencies]
-axum = { version = "0.8.1", features = ["multipart", "http1", "tokio"] }
+axum = { version = "0.8.1", features = ["multipart", "http1", "tokio", "macros"] }
 tokio = { version = "1.44.1", features = ["full"] }
 tokio-util = { version = "0.7.14", features = ["io", "codec"] }
 tokio-stream = { version = "0.1.17", features = ["fs"] }
@@ -39,7 +39,6 @@ jsonwebtoken = "9.3.1"
 argon2 = "0.5.3"
 rand_core = { version = "0.6.4", features = ["std"] }
 time = "0.3.41"
-axum-extra = { version = "0.9.6", features = ["cookie"] }
 axum-server = "0.6.0"
 hyper = { version = "1.6.0", features = ["full"] }
 

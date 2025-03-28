@@ -21,6 +21,9 @@ const ui = {
                 <div class="context-menu-item" id="move-folder-option">
                     <i class="fas fa-exchange-alt"></i> <span data-i18n="actions.move">Mover a...</span>
                 </div>
+                <div class="context-menu-item" id="share-folder-option">
+                    <i class="fas fa-share-alt"></i> <span data-i18n="actions.share">Compartir</span>
+                </div>
                 <div class="context-menu-item" id="delete-folder-option">
                     <i class="fas fa-trash"></i> <span data-i18n="actions.delete">Eliminar</span>
                 </div>
@@ -34,6 +37,9 @@ const ui = {
             fileMenu.className = 'context-menu';
             fileMenu.id = 'file-context-menu';
             fileMenu.innerHTML = `
+                <div class="context-menu-item" id="share-file-option">
+                    <i class="fas fa-share-alt"></i> <span data-i18n="actions.share">Compartir</span>
+                </div>
                 <div class="context-menu-item" id="move-file-option">
                     <i class="fas fa-exchange-alt"></i> <span data-i18n="actions.move">Mover a...</span>
                 </div>
@@ -85,9 +91,144 @@ const ui = {
             `;
             document.body.appendChild(moveDialog);
         }
+        
+        // Share dialog
+        if (!document.getElementById('share-dialog')) {
+            const shareDialog = document.createElement('div');
+            shareDialog.className = 'share-dialog';
+            shareDialog.id = 'share-dialog';
+            shareDialog.innerHTML = `
+                <div class="share-dialog-content">
+                    <div class="share-dialog-header" data-i18n="dialogs.share_file">Compartir archivo</div>
+                    <div class="shared-item-info">
+                        <strong>Elemento:</strong> <span id="shared-item-name"></span>
+                    </div>
+                    
+                    <div id="existing-shares-section" style="display:none; margin: 15px 0;">
+                        <h3 data-i18n="dialogs.existing_shares">Enlaces compartidos existentes</h3>
+                        <div id="existing-shares-container"></div>
+                    </div>
+                    
+                    <div class="share-options">
+                        <h3 data-i18n="dialogs.share_options">Opciones de compartición</h3>
+                        
+                        <div class="form-group">
+                            <label for="share-password" data-i18n="dialogs.password">Contraseña (opcional):</label>
+                            <input type="password" id="share-password" placeholder="Proteger con contraseña">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="share-expiration" data-i18n="dialogs.expiration">Fecha de vencimiento (opcional):</label>
+                            <input type="date" id="share-expiration">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label data-i18n="dialogs.permissions">Permisos:</label>
+                            <div class="permission-options">
+                                <div class="permission-option">
+                                    <input type="checkbox" id="share-permission-read" checked>
+                                    <label for="share-permission-read" data-i18n="permissions.read">Lectura</label>
+                                </div>
+                                <div class="permission-option">
+                                    <input type="checkbox" id="share-permission-write">
+                                    <label for="share-permission-write" data-i18n="permissions.write">Escritura</label>
+                                </div>
+                                <div class="permission-option">
+                                    <input type="checkbox" id="share-permission-reshare">
+                                    <label for="share-permission-reshare" data-i18n="permissions.reshare">Permitir compartir</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="new-share-section" style="display:none; margin: 15px 0;">
+                        <h3 data-i18n="dialogs.generated_link">Enlace generado</h3>
+                        <div class="form-group">
+                            <input type="text" id="generated-share-url" readonly>
+                            <div class="share-link-actions">
+                                <button class="btn btn-small" id="copy-share-btn">
+                                    <i class="fas fa-copy"></i> <span data-i18n="actions.copy">Copiar</span>
+                                </button>
+                                <button class="btn btn-small" id="notify-share-btn">
+                                    <i class="fas fa-envelope"></i> <span data-i18n="actions.notify">Notificar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="share-dialog-buttons">
+                        <button class="btn" id="share-cancel-btn" data-i18n="actions.cancel">Cancelar</button>
+                        <button class="btn btn-primary" id="share-confirm-btn" data-i18n="actions.share">Compartir</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(shareDialog);
+            
+            // Add event listeners for share dialog
+            document.getElementById('share-cancel-btn').addEventListener('click', () => {
+                contextMenus.closeShareDialog();
+            });
+            
+            document.getElementById('share-confirm-btn').addEventListener('click', () => {
+                contextMenus.createSharedLink();
+            });
+            
+            document.getElementById('copy-share-btn').addEventListener('click', async () => {
+                const shareUrl = document.getElementById('generated-share-url').value;
+                await fileSharing.copyLinkToClipboard(shareUrl);
+            });
+            
+            document.getElementById('notify-share-btn').addEventListener('click', () => {
+                const shareUrl = document.getElementById('generated-share-url').value;
+                contextMenus.showEmailNotificationDialog(shareUrl);
+            });
+        }
+        
+        // Notification dialog
+        if (!document.getElementById('notification-dialog')) {
+            const notificationDialog = document.createElement('div');
+            notificationDialog.className = 'share-dialog';
+            notificationDialog.id = 'notification-dialog';
+            notificationDialog.innerHTML = `
+                <div class="share-dialog-content">
+                    <div class="share-dialog-header" data-i18n="dialogs.notify">Notificar enlace compartido</div>
+                    
+                    <p><strong>URL:</strong> <span id="notification-share-url"></span></p>
+                    
+                    <div class="form-group">
+                        <label for="notification-email" data-i18n="dialogs.recipient">Destinatario:</label>
+                        <input type="email" id="notification-email" placeholder="Correo electrónico">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notification-message" data-i18n="dialogs.message">Mensaje (opcional):</label>
+                        <textarea id="notification-message" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="share-dialog-buttons">
+                        <button class="btn" id="notification-cancel-btn" data-i18n="actions.cancel">Cancelar</button>
+                        <button class="btn btn-primary" id="notification-send-btn" data-i18n="actions.send">Enviar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(notificationDialog);
+            
+            // Add event listeners for notification dialog
+            document.getElementById('notification-cancel-btn').addEventListener('click', () => {
+                contextMenus.closeNotificationDialog();
+            });
+            
+            document.getElementById('notification-send-btn').addEventListener('click', () => {
+                contextMenus.sendShareNotification();
+            });
+        }
 
         // Assign events to menu items
-        contextMenus.assignMenuEvents();
+        if (window.contextMenus) {
+            window.contextMenus.assignMenuEvents();
+        } else {
+            console.warn('contextMenus module not loaded');
+        }
     },
 
     /**

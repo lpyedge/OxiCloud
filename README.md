@@ -1,8 +1,8 @@
-# 🚀 OxiCloud [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 <p align="center">
-  <img src="static/oxicloud-logo.svg" alt="OxiCloud" width="300" />
+  <img src="static/oxicloud-logo.svg" alt="OxiCloud" width="400" />
 </p>
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## A lightweight, Rust-powered alternative to NextCloud
 
