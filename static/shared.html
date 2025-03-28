@@ -22,7 +22,7 @@
                     </select>
                 </div>
                 <button id="go-to-files" class="header-button">
-                    <span data-i18n="shared_backToFiles">Back to Files</span>
+                    <span data-i18n="shared.backToFiles">Back to Files</span>
                 </button>
             </div>
         </div>
@@ -30,30 +30,30 @@
 
     <main class="shared-page-container">
         <div class="shared-header">
-            <h2 data-i18n="shared_pageTitle">Shared Resources</h2>
-            <p data-i18n="shared_pageDescription">Manage your shared files and folders</p>
+            <h2 data-i18n="shared.pageTitle">Shared Resources</h2>
+            <p data-i18n="shared.pageDescription">Manage your shared files and folders</p>
         </div>
 
         <div class="shared-filters">
             <div class="filter-group">
-                <label for="filter-type" data-i18n="shared_filterType">Type:</label>
+                <label for="filter-type" data-i18n="shared.filterType">Type:</label>
                 <select id="filter-type">
-                    <option value="all" data-i18n="shared_filterAll">All</option>
-                    <option value="file" data-i18n="shared_filterFiles">Files</option>
-                    <option value="folder" data-i18n="shared_filterFolders">Folders</option>
+                    <option value="all" data-i18n="shared.filterAll">All</option>
+                    <option value="file" data-i18n="shared.filterFiles">Files</option>
+                    <option value="folder" data-i18n="shared.filterFolders">Folders</option>
                 </select>
             </div>
             <div class="filter-group">
-                <label for="sort-by" data-i18n="shared_sortBy">Sort by:</label>
+                <label for="sort-by" data-i18n="shared.sortBy">Sort by:</label>
                 <select id="sort-by">
-                    <option value="name" data-i18n="shared_sortByName">Name</option>
-                    <option value="date" data-i18n="shared_sortByDate">Date shared</option>
-                    <option value="expiration" data-i18n="shared_sortByExpiration">Expiration</option>
+                    <option value="name" data-i18n="shared.sortByName">Name</option>
+                    <option value="date" data-i18n="shared.sortByDate">Date shared</option>
+                    <option value="expiration" data-i18n="shared.sortByExpiration">Expiration</option>
                 </select>
             </div>
             <div class="search-box">
                 <input type="text" id="shared-search" placeholder="Search shared items...">
-                <button id="shared-search-btn"><span data-i18n="shared_search">Search</span></button>
+                <button id="shared-search-btn"><span data-i18n="shared.search">Search</span></button>
             </div>
         </div>
 
@@ -61,13 +61,13 @@
             <table class="shared-list">
                 <thead>
                     <tr>
-                        <th data-i18n="shared_colName">Name</th>
-                        <th data-i18n="shared_colType">Type</th>
-                        <th data-i18n="shared_colDateShared">Date Shared</th>
-                        <th data-i18n="shared_colExpiration">Expiration</th>
-                        <th data-i18n="shared_colPermissions">Permissions</th>
-                        <th data-i18n="shared_colPassword">Password</th>
-                        <th data-i18n="shared_colActions">Actions</th>
+                        <th data-i18n="shared.colName">Name</th>
+                        <th data-i18n="shared.colType">Type</th>
+                        <th data-i18n="shared.colDateShared">Date Shared</th>
+                        <th data-i18n="shared.colExpiration">Expiration</th>
+                        <th data-i18n="shared.colPermissions">Permissions</th>
+                        <th data-i18n="shared.colPassword">Password</th>
+                        <th data-i18n="shared.colActions">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="shared-items-list">
@@ -78,9 +78,9 @@
 
         <div id="empty-shared-state" class="empty-state" style="display:none;">
             <div class="empty-state-icon">📂</div>
-            <h3 data-i18n="shared_emptyStateTitle">No shared resources yet</h3>
-            <p data-i18n="shared_emptyStateDesc">When you share files or folders, they will appear here</p>
-            <a href="/" class="button primary" data-i18n="shared_goToFiles">Go to Files</a>
+            <h3 data-i18n="shared.emptyStateTitle">No shared resources yet</h3>
+            <p data-i18n="shared.emptyStateDesc">When you share files or folders, they will appear here</p>
+            <a href="/" class="button primary" data-i18n="shared.goToFiles">Go to Files</a>
         </div>
     </main>
 
@@ -88,7 +88,7 @@
     <div id="share-dialog" class="dialog">
         <div class="dialog-content">
             <div class="dialog-header">
-                <h3 data-i18n="share_dialogTitle">Share Link</h3>
+                <h3 data-i18n="share.dialogTitle">Share Link</h3>
                 <button class="close-dialog-btn">&times;</button>
             </div>
             <div class="dialog-body">
@@ -98,43 +98,43 @@
                 </div>
                 
                 <div class="share-link-section">
-                    <label for="share-link-url" data-i18n="share_linkLabel">Share Link:</label>
+                    <label for="share-link-url" data-i18n="share.linkLabel">Share Link:</label>
                     <div class="share-link-container">
                         <input type="text" id="share-link-url" readonly>
-                        <button id="copy-link-btn" data-i18n="share_copyLink">Copy</button>
+                        <button id="copy-link-btn" data-i18n="share.copyLink">Copy</button>
                     </div>
                 </div>
                 
                 <div class="share-settings">
                     <div class="share-setting">
-                        <label data-i18n="share_permissions">Permissions:</label>
+                        <label data-i18n="share.permissions">Permissions:</label>
                         <div class="permissions-options">
                             <label>
                                 <input type="checkbox" id="permission-read" checked>
-                                <span data-i18n="share_permissionRead">Read</span>
+                                <span data-i18n="share.permissionRead">Read</span>
                             </label>
                             <label>
                                 <input type="checkbox" id="permission-write">
-                                <span data-i18n="share_permissionWrite">Write</span>
+                                <span data-i18n="share.permissionWrite">Write</span>
                             </label>
                             <label>
                                 <input type="checkbox" id="permission-reshare">
-                                <span data-i18n="share_permissionReshare">Reshare</span>
+                                <span data-i18n="share.permissionReshare">Reshare</span>
                             </label>
                         </div>
                     </div>
                     
                     <div class="share-setting">
-                        <label for="share-password" data-i18n="share_password">Password Protection:</label>
+                        <label for="share-password" data-i18n="share.password">Password Protection:</label>
                         <div class="password-setting">
                             <input type="checkbox" id="enable-password">
                             <input type="password" id="share-password" placeholder="Enter password" disabled>
-                            <button id="generate-password" data-i18n="share_generatePassword">Generate</button>
+                            <button id="generate-password" data-i18n="share.generatePassword">Generate</button>
                         </div>
                     </div>
                     
                     <div class="share-setting">
-                        <label for="share-expiration" data-i18n="share_expiration">Expiration Date:</label>
+                        <label for="share-expiration" data-i18n="share.expiration">Expiration Date:</label>
                         <div class="expiration-setting">
                             <input type="checkbox" id="enable-expiration">
                             <input type="date" id="share-expiration" disabled>
@@ -143,8 +143,8 @@
                 </div>
                 
                 <div class="share-actions">
-                    <button id="update-share-btn" class="button primary" data-i18n="share_update">Update Share</button>
-                    <button id="remove-share-btn" class="button danger" data-i18n="share_remove">Remove Share</button>
+                    <button id="update-share-btn" class="button primary" data-i18n="share.update">Update Share</button>
+                    <button id="remove-share-btn" class="button danger" data-i18n="share.remove">Remove Share</button>
                 </div>
             </div>
         </div>
@@ -154,7 +154,7 @@
     <div id="share-notification-dialog" class="dialog">
         <div class="dialog-content">
             <div class="dialog-header">
-                <h3 data-i18n="share_notifyTitle">Send Notification</h3>
+                <h3 data-i18n="share.notifyTitle">Send Notification</h3>
                 <button class="close-dialog-btn">&times;</button>
             </div>
             <div class="dialog-body">
@@ -165,18 +165,18 @@
                 
                 <div class="notification-form">
                     <div class="form-group">
-                        <label for="notification-email" data-i18n="share_notifyEmailLabel">Email Address:</label>
+                        <label for="notification-email" data-i18n="share.notifyEmailLabel">Email Address:</label>
                         <input type="email" id="notification-email" placeholder="Enter recipient email">
                     </div>
                     
                     <div class="form-group">
-                        <label for="notification-message" data-i18n="share_notifyMessageLabel">Message (optional):</label>
+                        <label for="notification-message" data-i18n="share.notifyMessageLabel">Message (optional):</label>
                         <textarea id="notification-message" placeholder="Add a personal message" rows="3"></textarea>
                     </div>
                 </div>
                 
                 <div class="notification-actions">
-                    <button id="send-notification-btn" class="button primary" data-i18n="share_notifySend">Send Notification</button>
+                    <button id="send-notification-btn" class="button primary" data-i18n="share.notifySend">Send Notification</button>
                 </div>
             </div>
         </div>

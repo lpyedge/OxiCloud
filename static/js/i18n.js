@@ -34,12 +34,7 @@ async function loadTranslations(locale) {
     }
     
     try {
-        const response = await fetch(`/api/i18n/locales/${locale}`);
-        if (!response.ok) {
-            throw new Error(`Failed to load translations for ${locale}`);
-        }
-        
-        // Fetch the actual JSON file directly if the API doesn't provide a full translations object
+        // Load directly from local JSON file
         const localeData = await fetch(`/locales/${locale}.json`);
         if (!localeData.ok) {
             throw new Error(`Failed to load locale file for ${locale}`);
@@ -49,17 +44,6 @@ async function loadTranslations(locale) {
         return translations[locale];
     } catch (error) {
         console.error('Error loading translations:', error);
-        
-        // Try to load from file directly as fallback
-        try {
-            const fallbackResponse = await fetch(`/locales/${locale}.json`);
-            if (fallbackResponse.ok) {
-                translations[locale] = await fallbackResponse.json();
-                return translations[locale];
-            }
-        } catch (fallbackError) {
-            console.error('Error loading fallback translations:', fallbackError);
-        }
         
         // Return empty object as last resort
         translations[locale] = {};
@@ -74,6 +58,13 @@ async function loadTranslations(locale) {
  * @returns {string|null} - The translation value or null if not found
  */
 function getNestedValue(obj, path) {
+    // Try direct key match first
+    if (obj && typeof obj === 'object' && path in obj) {
+        const value = obj[path];
+        return (typeof value === 'string') ? value : null;
+    }
+    
+    // Try standard dot notation for nested values
     const keys = path.split('.');
     let current = obj;
     
@@ -81,11 +72,21 @@ function getNestedValue(obj, path) {
         if (current && typeof current === 'object' && key in current) {
             current = current[key];
         } else {
+            // Key not found in standard dotted path
+            // Try a last attempt with underscore format if this is a prefix_suffix format key
+            if (path.includes('_') && !path.includes('.')) {
+                const [prefix, ...parts] = path.split('_');
+                const suffix = parts.join('_');
+                
+                if (obj[prefix] && typeof obj[prefix] === 'object' && suffix in obj[prefix]) {
+                    return obj[prefix][suffix];
+                }
+            }
             return null;
         }
     }
     
-    return typeof current === 'string' ? current : null;
+    return (typeof current === 'string') ? current : null;
 }
 
 /**
@@ -101,6 +102,16 @@ function t(key, params = {}) {
         // Translation not loaded yet, return key
         console.warn(`Translations for ${currentLocale} not loaded yet`);
         return key;
+    }
+    
+    // Special handling for shared_ and share_ prefixed keys
+    if (key.startsWith('shared_') || key.startsWith('share_')) {
+        const unprefixedKey = key.replace(/^(shared|share)_/, '');
+        const prefixObj = key.startsWith('shared_') ? localeData.shared : localeData.share;
+        
+        if (prefixObj && typeof prefixObj === 'object' && unprefixedKey in prefixObj) {
+            return interpolate(prefixObj[unprefixedKey], params);
+        }
     }
     
     // Get the translation value

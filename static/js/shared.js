@@ -26,9 +26,17 @@ function checkAuthentication() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Initialize i18n
-    initializeI18n();
+    await initializeI18n();
+    
+    // Wait a moment for translations to fully load
+    setTimeout(() => {
+        // Manually translate all elements with data-i18n attribute
+        if (window.i18n && window.i18n.translatePage) {
+            window.i18n.translatePage();
+        }
+    }, 500);
     
     // Elements
     const sharedItemsList = document.getElementById('shared-items-list');
