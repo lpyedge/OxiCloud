@@ -292,7 +292,7 @@ pub fn create_api_routes(
         .nest("/search", search_router);
         
     // Re-enable trash routes to make the trash view work
-    if let Some(trash_service_ref) = trash_service.clone() {
+    if let Some(_trash_service_ref) = trash_service.clone() {
         tracing::info!("Setting up trash routes for trash view");
         
         // Create a router for trash specific endpoints that handles the auth requirements
@@ -534,7 +534,7 @@ pub fn create_api_routes(
     }
     
     // Get the app configuration
-    let config = AppConfig::from_env();
+    let _config = AppConfig::from_env();
     
     // For now, just use the router as is - we'll properly implement the auth middleware later
     // when all implementation details are fixed

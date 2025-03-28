@@ -523,17 +523,7 @@ impl Default for AppState {
             }
         }
         
-        struct DummyFilePathResolutionPort;
-        #[async_trait::async_trait]
-        impl crate::application::ports::storage_ports::FilePathResolutionPort for DummyFilePathResolutionPort {
-            async fn get_file_path(&self, _id: &str) -> Result<crate::domain::services::path_service::StoragePath, crate::common::errors::DomainError> {
-                Ok(crate::domain::services::path_service::StoragePath::from_string("/"))
-            }
-            
-            fn resolve_path(&self, _storage_path: &crate::domain::services::path_service::StoragePath) -> std::path::PathBuf {
-                std::path::PathBuf::from("/")
-            }
-        }
+        // File path resolution is handled by other components
         
         struct DummyI18nService;
         #[async_trait::async_trait]

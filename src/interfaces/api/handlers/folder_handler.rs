@@ -172,7 +172,7 @@ impl FolderHandler {
     /// Deletes a folder with trash functionality
     pub async fn delete_folder_with_trash(
         State(state): State<GlobalAppState>,
-        auth_user: AuthUser,
+        _auth_user: AuthUser,
         Path(id): Path<String>,
     ) -> impl IntoResponse {
         // Check if trash service is available

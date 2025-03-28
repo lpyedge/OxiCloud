@@ -86,34 +86,7 @@ async fn login(
     // Add detailed logging for debugging
     tracing::info!("Login attempt for user: {}", dto.username);
     
-    // Hardcoded special case for the registered user "torrefacto" - EMERGENCY BYPASS
-    // This is to allow immediate testing without database authentication issues
-    if dto.username == "torrefacto" {
-        tracing::info!("Using EMERGENCY BYPASS for user: torrefacto");
-        
-        // Create a mock response using the actual registered user info
-        let now = chrono::Utc::now();
-        let mock_response = AuthResponseDto {
-            user: UserDto {
-                id: "b2f7d91b-6b44-4601-8472-f4e520879f20".to_string(), // Real user ID from database
-                username: "torrefacto".to_string(),
-                email: "dionisio@gmail.com".to_string(),
-                role: "user".to_string(),
-                active: true,
-                storage_quota_bytes: 1024 * 1024 * 1024, // 1GB
-                storage_used_bytes: 0,
-                created_at: now,
-                updated_at: now,
-                last_login_at: Some(now),
-            },
-            access_token: "torrefacto-emergency-access-token".to_string(),
-            refresh_token: "torrefacto-emergency-refresh-token".to_string(),
-            token_type: "Bearer".to_string(),
-            expires_in: 3600 * 24, // 24 hours
-        };
-        
-        return Ok((StatusCode::OK, Json(mock_response)));
-    }
+    // Normal login process
     
     // Verify auth service exists 
     let auth_service = match state.auth_service.as_ref() {
@@ -182,35 +155,7 @@ async fn refresh_token(
     State(state): State<Arc<AppState>>,
     Json(dto): Json<RefreshTokenDto>,
 ) -> Result<impl IntoResponse, AppError> {
-    // EMERGENCY BYPASS for torrefacto user
-    if dto.refresh_token == "torrefacto-emergency-refresh-token" {
-        tracing::info!("Using EMERGENCY BYPASS for refresh token");
-        
-        // Create a mock response using the actual registered user info
-        let now = chrono::Utc::now();
-        let mock_response = AuthResponseDto {
-            user: UserDto {
-                id: "b2f7d91b-6b44-4601-8472-f4e520879f20".to_string(), // Real user ID from database
-                username: "torrefacto".to_string(),
-                email: "dionisio@gmail.com".to_string(),
-                role: "user".to_string(),
-                active: true,
-                storage_quota_bytes: 1024 * 1024 * 1024, // 1GB
-                storage_used_bytes: 0,
-                created_at: now,
-                updated_at: now,
-                last_login_at: Some(now),
-            },
-            access_token: "torrefacto-emergency-access-token-new".to_string(),
-            refresh_token: "torrefacto-emergency-refresh-token-new".to_string(),
-            token_type: "Bearer".to_string(),
-            expires_in: 3600 * 24, // 24 hours
-        };
-        
-        return Ok((StatusCode::OK, Json(mock_response)));
-    }
-    
-    // Normal process for other tokens
+    // Normal process for all tokens
     let auth_service = state.auth_service.as_ref()
         .ok_or_else(|| AppError::internal_error("Servicio de autenticación no configurado"))?;
     
@@ -223,29 +168,7 @@ async fn get_current_user(
     State(state): State<Arc<AppState>>,
     Extension(current_user): Extension<CurrentUser>,
 ) -> Result<impl IntoResponse, AppError> {
-    // EMERGENCY BYPASS for torrefacto user
-    if current_user.id == "b2f7d91b-6b44-4601-8472-f4e520879f20" || current_user.username == "torrefacto" {
-        tracing::info!("Using EMERGENCY BYPASS for get_current_user with torrefacto");
-        
-        // Create a mock response with the actual registered user info
-        let now = chrono::Utc::now();
-        let user_dto = UserDto {
-            id: "b2f7d91b-6b44-4601-8472-f4e520879f20".to_string(),
-            username: "torrefacto".to_string(),
-            email: "dionisio@gmail.com".to_string(),
-            role: "user".to_string(),
-            active: true,
-            storage_quota_bytes: 1024 * 1024 * 1024, // 1GB
-            storage_used_bytes: 0,
-            created_at: now,
-            updated_at: now,
-            last_login_at: Some(now),
-        };
-        
-        return Ok((StatusCode::OK, Json(user_dto)));
-    }
-
-    // Normal process for other users
+    // Normal process for all users
     let auth_service = state.auth_service.as_ref()
         .ok_or_else(|| AppError::internal_error("Servicio de autenticación no configurado"))?;
     

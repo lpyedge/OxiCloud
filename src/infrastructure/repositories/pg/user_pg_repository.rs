@@ -50,7 +50,7 @@ impl UserRepository for UserPgRepository {
         let role_str = user.role().to_string();
         
         // Modificar el SQL para hacer un cast explícito al tipo auth.userrole
-        let result = sqlx::query(
+        let _result = sqlx::query(
             r#"
             INSERT INTO auth.users (
                 id, username, email, password_hash, role, 

@@ -80,33 +80,18 @@ pub async fn get_auth_user(req: &Request<Body>) -> Result<AuthUser, AuthError> {
 
 // Middleware de autenticación simplificado - solo valida si existe un token
 pub async fn auth_middleware(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
     headers: HeaderMap,
     mut request: Request,
     next: Next,
 ) -> Result<Response, AuthError> {
     // En una primera etapa, simplemente verificar si hay un token, sin validarlo
-    if let Some(token_str) = headers
+    if let Some(_token_str) = headers
         .get(header::AUTHORIZATION)
         .and_then(|value| value.to_str().ok())
         .and_then(|value| value.strip_prefix("Bearer ")) {
         
-        // EMERGENCY BYPASS for torrefacto user
-        if token_str == "torrefacto-emergency-access-token" || token_str == "torrefacto-emergency-access-token-new" {
-            tracing::info!("Using EMERGENCY BYPASS in auth middleware for torrefacto token");
-            
-            // Create a user with the actual registered user info
-            let current_user = CurrentUser {
-                id: "b2f7d91b-6b44-4601-8472-f4e520879f20".to_string(),
-                username: "torrefacto".to_string(),
-                email: "dionisio@gmail.com".to_string(),
-                role: "user".to_string(),
-            };
-            
-            // Add user to the request
-            request.extensions_mut().insert(current_user);
-            return Ok(next.run(request).await);
-        }
+        // Process token normally
         
         // For regular tokens, create a test user (this will be replaced with real validation)
         let current_user = CurrentUser {

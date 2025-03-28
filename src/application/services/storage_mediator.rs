@@ -115,7 +115,7 @@ impl FileSystemStorageMediator {
     
     /// Overload para implementar inicialización diferida con repository placeholder
     pub fn new_with_lazy_folder(
-        folder_repository: Arc<RwLock<Option<Arc<dyn FolderRepository>>>>,
+        _folder_repository: Arc<RwLock<Option<Arc<dyn FolderRepository>>>>,
         path_service: Arc<PathService>,
         id_mapping: Arc<dyn IdMappingPort>
     ) -> Self {

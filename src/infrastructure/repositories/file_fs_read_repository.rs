@@ -163,7 +163,7 @@ impl FileReadPort for FileFsReadRepository {
             })
     }
     
-    async fn list_files(&self, folder_id: Option<&str>) -> Result<Vec<File>, DomainError> {
+    async fn list_files(&self, _folder_id: Option<&str>) -> Result<Vec<File>, DomainError> {
         // Implementación real debe obtener la lista de archivos en una carpeta
         // Por ahora, devolvemos lista vacía
         Ok(Vec::new())
@@ -180,14 +180,14 @@ impl FileReadPort for FileFsReadRepository {
             })?;
         
         // Ruta absoluta del archivo
-        let abs_path = self.path_resolver.resolve_storage_path(file.storage_path());
+        let _abs_path = self.path_resolver.resolve_storage_path(file.storage_path());
         
         // Implementación real debe leer el contenido del archivo
         // Por ahora, devolvemos un vector vacío
         Ok(Vec::new())
     }
     
-    async fn get_file_stream(&self, id: &str) -> Result<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>, DomainError> {
+    async fn get_file_stream(&self, _id: &str) -> Result<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send>, DomainError> {
         // Implementación real debe devolver un stream de bytes del archivo
         // Por ahora, lanzamos un error
         Err(DomainError::internal_error("File stream", "Stream functionality not yet implemented"))
