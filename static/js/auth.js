@@ -17,46 +17,78 @@ const TOKEN_EXPIRY_KEY = 'oxicloud_token_expiry';
 const USER_DATA_KEY = 'oxicloud_user';
 
 // DOM elements
-const loginPanel = document.getElementById('login-panel');
-const registerPanel = document.getElementById('register-panel');
-const adminSetupPanel = document.getElementById('admin-setup-panel');
+let loginPanel, registerPanel, adminSetupPanel;
+let loginForm, registerForm, adminSetupForm;
+let loginError, registerError, registerSuccess, adminSetupError;
 
-const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
-const adminSetupForm = document.getElementById('admin-setup-form');
+// Initialize DOM elements only if we're on the login page
+function initLoginElements() {
+    // Check if we're on the login page
+    if (!document.getElementById('login-form')) {
+        console.log('Not on login page, skipping element initialization');
+        return false;
+    }
+    
+    loginPanel = document.getElementById('login-panel');
+    registerPanel = document.getElementById('register-panel');
+    adminSetupPanel = document.getElementById('admin-setup-panel');
 
-const loginError = document.getElementById('login-error');
-const registerError = document.getElementById('register-error');
-const registerSuccess = document.getElementById('register-success');
-const adminSetupError = document.getElementById('admin-setup-error');
+    loginForm = document.getElementById('login-form');
+    registerForm = document.getElementById('register-form');
+    adminSetupForm = document.getElementById('admin-setup-form');
 
-// Panel toggles
-document.getElementById('show-register').addEventListener('click', () => {
-    loginPanel.style.display = 'none';
-    registerPanel.style.display = 'block';
-    adminSetupPanel.style.display = 'none';
-});
+    loginError = document.getElementById('login-error');
+    registerError = document.getElementById('register-error');
+    registerSuccess = document.getElementById('register-success');
+    adminSetupError = document.getElementById('admin-setup-error');
 
-document.getElementById('show-login').addEventListener('click', () => {
-    loginPanel.style.display = 'block';
-    registerPanel.style.display = 'none';
-    adminSetupPanel.style.display = 'none';
-});
+    // Panel toggles
+    document.getElementById('show-register').addEventListener('click', () => {
+        loginPanel.style.display = 'none';
+        registerPanel.style.display = 'block';
+        adminSetupPanel.style.display = 'none';
+    });
 
-document.getElementById('show-admin-setup').addEventListener('click', () => {
-    loginPanel.style.display = 'none';
-    registerPanel.style.display = 'none';
-    adminSetupPanel.style.display = 'block';
-});
+    document.getElementById('show-login').addEventListener('click', () => {
+        loginPanel.style.display = 'block';
+        registerPanel.style.display = 'none';
+        adminSetupPanel.style.display = 'none';
+    });
 
-document.getElementById('back-to-login').addEventListener('click', () => {
-    loginPanel.style.display = 'block';
-    registerPanel.style.display = 'none';
-    adminSetupPanel.style.display = 'none';
-});
+    document.getElementById('show-admin-setup').addEventListener('click', () => {
+        loginPanel.style.display = 'none';
+        registerPanel.style.display = 'none';
+        adminSetupPanel.style.display = 'block';
+    });
+
+    document.getElementById('back-to-login').addEventListener('click', () => {
+        loginPanel.style.display = 'block';
+        registerPanel.style.display = 'none';
+        adminSetupPanel.style.display = 'none';
+    });
+    
+    return true;
+}
+
+// Initialize login elements if on login page
+const isLoginPage = initLoginElements();
 
 // Check if we already have a valid token
-document.addEventListener('DOMContentLoaded', async () => {
+let authInitialized = false;
+document.addEventListener('DOMContentLoaded', () => {
+    // Check if we're on the login page
+    if (!document.getElementById('login-form')) {
+        console.log('Not on login page, skipping auth check');
+        return;
+    }
+    
+    if (authInitialized) {
+        console.log('Auth already initialized, skipping');
+        return;
+    }
+    authInitialized = true;
+    
+    (async () => {
     try {
         const tokenExpiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
         if (tokenExpiry && new Date(tokenExpiry) > new Date()) {
@@ -87,17 +119,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
         console.error('Authentication check failed:', error);
     }
+    })();
 });
 
 // Login form submission
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Clear previous errors
-    loginError.style.display = 'none';
-    
-    const username = document.getElementById('login-username').value;
-    const password = document.getElementById('login-password').value;
+if (isLoginPage && loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Clear previous errors
+        loginError.style.display = 'none';
+        
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
     
     try {
         const data = await login(username, password);
@@ -161,9 +195,11 @@ loginForm.addEventListener('submit', async (e) => {
         loginError.style.display = 'block';
     }
 });
+}
 
 // Register form submission
-registerForm.addEventListener('submit', async (e) => {
+if (isLoginPage && registerForm) {
+    registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Clear previous messages
@@ -202,9 +238,11 @@ registerForm.addEventListener('submit', async (e) => {
         registerError.style.display = 'block';
     }
 });
+}
 
 // Admin setup form submission
-adminSetupForm.addEventListener('submit', async (e) => {
+if (isLoginPage && adminSetupForm) {
+    adminSetupForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     // Clear previous errors
@@ -235,6 +273,7 @@ adminSetupForm.addEventListener('submit', async (e) => {
         adminSetupError.style.display = 'block';
     }
 });
+}
 
 // API Functions
 

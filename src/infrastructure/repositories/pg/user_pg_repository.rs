@@ -85,7 +85,7 @@ impl UserRepository for UserPgRepository {
         let row = sqlx::query(
             r#"
             SELECT 
-                id, username, email, password_hash, role, 
+                id, username, email, password_hash, role::text as role_text, 
                 storage_quota_bytes, storage_used_bytes, 
                 created_at, updated_at, last_login_at, active
             FROM auth.users
@@ -98,9 +98,9 @@ impl UserRepository for UserPgRepository {
         .map_err(Self::map_sqlx_error)?;
 
         // Convert role string to UserRole enum
-        let role_str: String = row.get("role");
-        let role = match role_str.as_str() {
-            "admin" => UserRole::Admin,
+        let role_str: Option<String> = row.try_get("role_text").unwrap_or(None);
+        let role = match role_str.as_deref() {
+            Some("admin") => UserRole::Admin,
             _ => UserRole::User,
         };
         
@@ -124,7 +124,7 @@ impl UserRepository for UserPgRepository {
         let row = sqlx::query(
             r#"
             SELECT 
-                id, username, email, password_hash, role, 
+                id, username, email, password_hash, role::text as role_text, 
                 storage_quota_bytes, storage_used_bytes, 
                 created_at, updated_at, last_login_at, active
             FROM auth.users
@@ -137,9 +137,9 @@ impl UserRepository for UserPgRepository {
         .map_err(Self::map_sqlx_error)?;
 
         // Convert role string to UserRole enum
-        let role_str: String = row.get("role");
-        let role = match role_str.as_str() {
-            "admin" => UserRole::Admin,
+        let role_str: Option<String> = row.try_get("role_text").unwrap_or(None);
+        let role = match role_str.as_deref() {
+            Some("admin") => UserRole::Admin,
             _ => UserRole::User,
         };
         
@@ -163,7 +163,7 @@ impl UserRepository for UserPgRepository {
         let row = sqlx::query(
             r#"
             SELECT 
-                id, username, email, password_hash, role, 
+                id, username, email, password_hash, role::text as role_text, 
                 storage_quota_bytes, storage_used_bytes, 
                 created_at, updated_at, last_login_at, active
             FROM auth.users
@@ -176,9 +176,9 @@ impl UserRepository for UserPgRepository {
         .map_err(Self::map_sqlx_error)?;
 
         // Convert role string to UserRole enum
-        let role_str: String = row.get("role");
-        let role = match role_str.as_str() {
-            "admin" => UserRole::Admin,
+        let role_str: Option<String> = row.try_get("role_text").unwrap_or(None);
+        let role = match role_str.as_deref() {
+            Some("admin") => UserRole::Admin,
             _ => UserRole::User,
         };
         
@@ -276,7 +276,7 @@ impl UserRepository for UserPgRepository {
         let rows = sqlx::query(
             r#"
             SELECT 
-                id, username, email, password_hash, role, 
+                id, username, email, password_hash, role::text as role_text, 
                 storage_quota_bytes, storage_used_bytes, 
                 created_at, updated_at, last_login_at, active
             FROM auth.users
@@ -293,9 +293,9 @@ impl UserRepository for UserPgRepository {
         let users = rows.into_iter()
             .map(|row| {
                 // Convert role string to UserRole enum for each row
-                let role_str: String = row.get("role");
-                let role = match role_str.as_str() {
-                    "admin" => UserRole::Admin,
+                let role_str: Option<String> = row.try_get("role_text").unwrap_or(None);
+                let role = match role_str.as_deref() {
+                    Some("admin") => UserRole::Admin,
                     _ => UserRole::User,
                 };
                 
