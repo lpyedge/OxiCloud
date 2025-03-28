@@ -10,6 +10,7 @@ pub mod file_fs_write_repository;
 pub mod trash_fs_repository;
 pub mod file_fs_repository_trash;
 pub mod folder_fs_repository_trash;
+pub mod share_fs_repository;
 
 // Repositorios PostgreSQL
 pub mod pg;
@@ -20,3 +21,4 @@ pub use file_path_resolver::FilePathResolver;
 pub use file_fs_read_repository::FileFsReadRepository;
 pub use file_fs_write_repository::FileFsWriteRepository;
 pub use pg::{UserPgRepository, SessionPgRepository};
+pub use share_fs_repository::ShareFsRepository;

@@ -281,7 +281,7 @@ impl Default for FeaturesConfig {
         Self {
             enable_auth: true,  // Enable authentication by default
             enable_user_storage_quotas: false,
-            enable_file_sharing: false,
+            enable_file_sharing: true,  // Enable file sharing by default
             enable_trash: true,  // Enable trash feature
             enable_search: true, // Enable search feature
         }
@@ -409,6 +409,27 @@ impl AppConfig {
             .map(|v| v.parse::<bool>()) {
             if let Ok(val) = enable_user_storage_quotas {
                 config.features.enable_user_storage_quotas = val;
+            }
+        }
+        
+        if let Ok(enable_file_sharing) = env::var("OXICLOUD_ENABLE_FILE_SHARING")
+            .map(|v| v.parse::<bool>()) {
+            if let Ok(val) = enable_file_sharing {
+                config.features.enable_file_sharing = val;
+            }
+        }
+        
+        if let Ok(enable_trash) = env::var("OXICLOUD_ENABLE_TRASH")
+            .map(|v| v.parse::<bool>()) {
+            if let Ok(val) = enable_trash {
+                config.features.enable_trash = val;
+            }
+        }
+        
+        if let Ok(enable_search) = env::var("OXICLOUD_ENABLE_SEARCH")
+            .map(|v| v.parse::<bool>()) {
+            if let Ok(val) = enable_search {
+                config.features.enable_search = val;
             }
         }
         
