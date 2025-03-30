@@ -10,11 +10,11 @@ use crate::domain::services::path_service::StoragePath;
 #[derive(Debug, thiserror::Error)]
 pub enum FileError {
     /// Occurs when a file name contains invalid characters or is empty.
-    #[error("Nombre de archivo inválido: {0}")]
+    #[error("Invalid file name: {0}")]
     InvalidFileName(String),
     
     /// Occurs when validation fails for any file entity attribute.
-    #[error("Error en la validación: {0}")]
+    #[error("Validation error: {0}")]
     #[allow(dead_code)]
     ValidationError(String),
 }
@@ -68,7 +68,7 @@ pub struct File {
     modified_at: u64,
 }
 
-// Ya no necesitamos este módulo, ahora usamos un String directamente
+// We no longer need this module, now we use a String directly
 
 impl Default for File {
     fn default() -> Self {
@@ -87,7 +87,7 @@ impl Default for File {
 }
 
 impl File {
-    /// Crea un nuevo archivo con validación
+    /// Creates a new file with validation
     pub fn new(
         id: String,
         name: String,
@@ -96,7 +96,7 @@ impl File {
         mime_type: String,
         folder_id: Option<String>,
     ) -> FileResult<Self> {
-        // Validar nombre de archivo
+        // Validate file name
         if name.is_empty() || name.contains('/') || name.contains('\\') {
             return Err(FileError::InvalidFileName(name));
         }
@@ -106,7 +106,7 @@ impl File {
             .unwrap_or_default()
             .as_secs();
         
-        // Almacenamos el string de la ruta para compatibilidad con serialización
+        // Store the path string for serialization compatibility
         let path_string = storage_path.to_string();
             
         Ok(Self {
@@ -122,7 +122,7 @@ impl File {
         })
     }
     
-    /// Crea un archivo con timestamps específicos (para reconstrucción)
+    /// Creates a file with specific timestamps (for reconstruction)
     pub fn with_timestamps(
         id: String,
         name: String,
@@ -133,12 +133,12 @@ impl File {
         created_at: u64,
         modified_at: u64,
     ) -> FileResult<Self> {
-        // Validar nombre de archivo
+        // Validate file name
         if name.is_empty() || name.contains('/') || name.contains('\\') {
             return Err(FileError::InvalidFileName(name));
         }
         
-        // Almacenamos el string de la ruta para compatibilidad con serialización
+        // Store the path string for serialization compatibility
         let path_string = storage_path.to_string();
             
         Ok(Self {
@@ -191,8 +191,8 @@ impl File {
         self.modified_at
     }
     
-    /// Crea una nueva instancia de File desde un DTO
-    /// Esta función es principalmente para conversiones en los batch handlers
+    /// Creates a new File instance from a DTO
+    /// This function is primarily for conversions in batch handlers
     pub fn from_dto(
         id: String,
         name: String,
@@ -203,10 +203,10 @@ impl File {
         created_at: u64,
         modified_at: u64,
     ) -> Self {
-        // Crear storage_path desde el string
+        // Create storage_path from string
         let storage_path = StoragePath::from_string(&path);
         
-        // Crear directamente sin validación para evitar errores en conversiones DTO
+        // Create directly without validation to avoid errors in DTO conversions
         Self {
             id,
             name,
@@ -220,24 +220,24 @@ impl File {
         }
     }
     
-    // Métodos para crear nuevas versiones del archivo (inmutable)
+    // Methods to create new versions of the file (immutable)
     
-    /// Crea una nueva versión del archivo con nombre actualizado
+    /// Creates a new version of the file with updated name
     #[allow(dead_code)]
     pub fn with_name(&self, new_name: String) -> FileResult<Self> {
-        // Validar nombre de archivo
+        // Validate file name
         if new_name.is_empty() || new_name.contains('/') || new_name.contains('\\') {
             return Err(FileError::InvalidFileName(new_name));
         }
         
-        // Actualizar ruta basada en el nombre
+        // Update path based on name
         let parent_path = self.storage_path.parent();
         let new_storage_path = match parent_path {
             Some(parent) => parent.join(&new_name),
             None => StoragePath::from_string(&new_name),
         };
         
-        // Actualizar representación en string
+        // Update string representation
         let new_path_string = new_storage_path.to_string();
         
         let now = std::time::SystemTime::now()
@@ -258,15 +258,15 @@ impl File {
         })
     }
     
-    /// Crea una nueva versión del archivo con carpeta actualizada
+    /// Creates a new version of the file with updated folder
     pub fn with_folder(&self, folder_id: Option<String>, folder_path: Option<StoragePath>) -> FileResult<Self> {
-        // Necesitamos una ruta de carpeta para actualizar la ruta del archivo
+        // We need a folder path to update the file path
         let new_storage_path = match folder_path {
             Some(path) => path.join(&self.name),
-            None => StoragePath::from_string(&self.name), // Raíz
+            None => StoragePath::from_string(&self.name), // Root
         };
         
-        // Actualizar representación en string
+        // Update string representation
         let new_path_string = new_storage_path.to_string();
         
         let now = std::time::SystemTime::now()
@@ -287,7 +287,7 @@ impl File {
         })
     }
     
-    /// Crea una nueva versión del archivo con tamaño actualizado
+    /// Creates a new version of the file with updated size
     #[allow(dead_code)]
     pub fn with_size(&self, new_size: u64) -> Self {
         let now = std::time::SystemTime::now()
@@ -333,7 +333,7 @@ mod tests {
         let storage_path = StoragePath::from_string("/test/invalid/file.txt");
         let file = File::new(
             "123".to_string(),
-            "file/with/slash.txt".to_string(), // Nombre inválido
+            "file/with/slash.txt".to_string(), // Invalid name
             storage_path,
             100,
             "text/plain".to_string(),

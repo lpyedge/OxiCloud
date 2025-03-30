@@ -1,18 +1,18 @@
 use serde::{Serialize, Deserialize};
 use crate::domain::services::path_service::StoragePath;
 
-/// Error en la creación o manipulación de entidades de carpeta
+/// Error in the creation or manipulation of folder entities
 #[derive(Debug, thiserror::Error)]
 pub enum FolderError {
-    #[error("Nombre de carpeta inválido: {0}")]
+    #[error("Invalid folder name: {0}")]
     InvalidFolderName(String),
     
-    #[error("Error en la validación: {0}")]
+    #[error("Validation error: {0}")]
     #[allow(dead_code)]
     ValidationError(String),
 }
 
-/// Tipo de resultado para operaciones con entidades de carpeta
+/// Result type for folder entity operations
 pub type FolderResult<T> = Result<T, FolderError>;
 
 /// Represents a folder entity in the domain
@@ -42,7 +42,7 @@ pub struct Folder {
     modified_at: u64,
 }
 
-// Ya no necesitamos este módulo, ahora usamos un String directamente
+// We no longer need this module, now we use a String directly
 
 impl Default for Folder {
     fn default() -> Self {
@@ -66,7 +66,7 @@ impl Folder {
         storage_path: StoragePath,
         parent_id: Option<String>,
     ) -> FolderResult<Self> {
-        // Validar nombre de carpeta
+        // Validate folder name
         if name.is_empty() || name.contains('/') || name.contains('\\') {
             return Err(FolderError::InvalidFolderName(name));
         }
@@ -76,7 +76,7 @@ impl Folder {
             .unwrap_or_default()
             .as_secs();
         
-        // Almacenamos el string de la ruta para compatibilidad con serialización
+        // Store the path string for serialization compatibility
         let path_string = storage_path.to_string();
             
         Ok(Self {
@@ -99,12 +99,12 @@ impl Folder {
         created_at: u64,
         modified_at: u64,
     ) -> FolderResult<Self> {
-        // Validar nombre de carpeta
+        // Validate folder name
         if name.is_empty() || name.contains('/') || name.contains('\\') {
             return Err(FolderError::InvalidFolderName(name));
         }
         
-        // Almacenamos el string de la ruta para compatibilidad con serialización
+        // Store the path string for serialization compatibility
         let path_string = storage_path.to_string();
             
         Ok(Self {
@@ -147,8 +147,8 @@ impl Folder {
         self.modified_at
     }
     
-    /// Crea una nueva instancia de Folder desde un DTO
-    /// Esta función es principalmente para conversiones en los batch handlers
+    /// Creates a new Folder instance from a DTO
+    /// This function is primarily for conversions in batch handlers
     pub fn from_dto(
         id: String,
         name: String,
@@ -157,10 +157,10 @@ impl Folder {
         created_at: u64,
         modified_at: u64,
     ) -> Self {
-        // Crear storage_path desde el string
+        // Create storage_path from the string
         let storage_path = StoragePath::from_string(&path);
         
-        // Crear directamente sin validación para evitar errores en conversiones DTO
+        // Create directly without validation to avoid errors in DTO conversions
         Self {
             id,
             name,
@@ -172,23 +172,23 @@ impl Folder {
         }
     }
     
-    // Métodos para crear nuevas versiones de la carpeta (inmutable)
+    // Methods to create new versions of the folder (immutable)
     
     /// Creates a new version of the folder with updated name
     pub fn with_name(&self, new_name: String) -> FolderResult<Self> {
-        // Validar nombre de carpeta
+        // Validate folder name
         if new_name.is_empty() || new_name.contains('/') || new_name.contains('\\') {
             return Err(FolderError::InvalidFolderName(new_name));
         }
         
-        // Actualizar ruta basada en el nombre
+        // Update path based on the name
         let parent_path = self.storage_path.parent();
         let new_storage_path = match parent_path {
             Some(parent) => parent.join(&new_name),
             None => StoragePath::from_string(&new_name),
         };
         
-        // Actualizar representación en string
+        // Update string representation
         let new_path_string = new_storage_path.to_string();
         
         let now = std::time::SystemTime::now()
@@ -209,13 +209,13 @@ impl Folder {
     
     /// Creates a new version of the folder with updated parent
     pub fn with_parent(&self, parent_id: Option<String>, parent_path: Option<StoragePath>) -> FolderResult<Self> {
-        // Necesitamos una ruta de carpeta para actualizar la ruta
+        // We need a folder path to update the path
         let new_storage_path = match parent_path {
             Some(path) => path.join(&self.name),
-            None => StoragePath::from_string(&self.name), // Raíz
+            None => StoragePath::from_string(&self.name), // Root
         };
         
-        // Actualizar representación en string
+        // Update string representation
         let new_path_string = new_storage_path.to_string();
         
         let now = std::time::SystemTime::now()
@@ -276,7 +276,7 @@ mod tests {
         let storage_path = StoragePath::from_string("/test/invalid/folder");
         let folder = Folder::new(
             "123".to_string(),
-            "folder/with/slash".to_string(), // Nombre inválido
+            "folder/with/slash".to_string(), // Invalid name
             storage_path,
             None,
         );
@@ -302,6 +302,6 @@ mod tests {
         assert!(renamed.is_ok());
         let renamed = renamed.unwrap();
         assert_eq!(renamed.name(), "new_name");
-        assert_eq!(renamed.id(), "123"); // El ID no cambia
+        assert_eq!(renamed.id(), "123"); // The ID doesn't change
     }
 }

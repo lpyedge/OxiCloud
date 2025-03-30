@@ -17,7 +17,7 @@ use crate::application::services::storage_mediator::StorageMediator;
 use crate::application::ports::outbound::FolderStoragePort;
 use crate::common::errors::DomainError;
 
-// Para poder usar streams en la función list_folders
+// To be able to use streams in the list_folders function
 use tokio_stream;
 
 /// Filesystem implementation of the FolderRepository interface
@@ -79,7 +79,7 @@ impl FolderFsRepository {
     async fn count_directory_items(&self, directory_path: &Path) -> FolderRepositoryResult<usize> {
         use tokio::fs::read_dir;
         
-        // Timeout para evitar bloqueos
+        // Timeout to avoid blocking
         let read_dir_timeout = Duration::from_secs(30);
         let read_dir_result = timeout(
             read_dir_timeout,
@@ -91,7 +91,7 @@ impl FolderFsRepository {
                 let mut entries = result.map_err(FolderRepositoryError::IoError)?;
                 let mut count = 0;
                 
-                // Contar entradas manualmente
+                // Count entries manually
                 while let Ok(Some(_)) = entries.next_entry().await {
                     count += 1;
                 }
@@ -261,10 +261,10 @@ impl From<FolderRepositoryError> for DomainError {
     }
 }
 
-// Implementar Clone para poder usar en procesamiento concurrente
+// Implement Clone to use in concurrent processing
 impl Clone for FolderFsRepository {
     fn clone(&self) -> Self {
-        // Clonamos los Arc, lo que solo incrementa el contador de referencias
+        // Clone the Arcs, which only increments the reference counter
         Self {
             root_path: self.root_path.clone(),
             storage_mediator: self.storage_mediator.clone(),
