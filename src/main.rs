@@ -678,7 +678,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     // Start server with clear message
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8086));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 8086));
     tracing::info!("Starting OxiCloud server on http://{}", addr);
     
     // Start the server
