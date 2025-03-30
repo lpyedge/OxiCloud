@@ -6,8 +6,10 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: oxicloud
-    ports:
-      - "5432:5432"
+#    ports:
+#      - "5432:5432"
+    networks:
+      - oxicloud
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql
@@ -16,6 +18,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  oxicloud:
+    image: oxicloud
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+      - "8085:8085"
+    networks:
+      - oxicloud
+    depends_on:
+      - postgres
+    environment:
+    - "OXICLOUD_DB_CONNECTION_STRING=postgres://postgres:postgres@postgres/oxicloud"
+
+networks:
+  oxicloud:
+    driver: bridge
 
 volumes:
   pg_data:
