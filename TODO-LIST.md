@@ -38,9 +38,9 @@ This document contains the task list for the development of OxiCloud, a minimali
 ## Phase 2: Authentication and Multi-User
 
 ### User System
-- [ ] Design data model for users
+- [x] Design data model for users
 - [ ] Implement user registration
-- [ ] Create login system
+- [x] Create login system
 - [ ] Add user profile page
 - [ ] Implement password recovery
 - [ ] Separate storage by user
@@ -63,7 +63,7 @@ This document contains the task list for the development of OxiCloud, a minimali
 ## Phase 3: Collaboration Features
 
 ### File Sharing
-- [ ] Implement shared link generation
+- [x] Implement shared link generation
 - [ ] Add permission configuration for links
 - [ ] Implement password protection for links
 - [ ] Add expiration dates for shared links

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="static/oxicloud-logo.svg" alt="OxiCloud" width="400" />
+  <img src="static/oxicloud-logo.svg" alt="OxiCloud" width="375" />
 </p>
 
 <div align="center">

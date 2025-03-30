@@ -1,4 +1,4 @@
-/* Reset y estilos base */
+/* Reset and base styles */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -13,7 +13,7 @@ body {
     overflow: hidden;
 }
 
-/* Barra lateral */
+/* Sidebar */
 .sidebar {
     width: 250px;
     background-color: #2a3042;
@@ -86,7 +86,7 @@ body {
     text-align: center;
 }
 
-/* Indicador de almacenamiento */
+/* Storage indicator */
 .storage-container {
     margin: 20px 15px;
     background-color: #374e65;
@@ -120,7 +120,7 @@ body {
     color: #f5f5f5;
 }
 
-/* Contenido principal */
+/* Main content */
 .main-content {
     flex-grow: 1;
     display: flex;
@@ -128,7 +128,7 @@ body {
     overflow: hidden;
 }
 
-/* Barra superior */
+/* Top bar */
 .top-bar {
     height: 70px;
     background-color: white;
@@ -186,7 +186,7 @@ body {
     background-color: #e64a29;
 }
 
-/* Estilos para resultados de búsqueda */
+/* Styles for search results */
 .search-results-header {
     display: flex;
     justify-content: space-between;
@@ -261,7 +261,7 @@ body {
     font-weight: bold;
 }
 
-/* Área de contenido */
+/* Content area */
 .content-area {
     flex-grow: 1;
     padding: 20px;
@@ -358,11 +358,11 @@ body {
     border: 2px dashed #ffc107;
 }
 
-/* Estilos para las carpetas como en el mockup */
+/* Styles for folders as in the mockup */
 .file-icon.folder-icon {
     width: 100px;
     height: 70px;
-    background-color: #ffeaa7; /* Color amarillo claro */
+    background-color: #ffeaa7; /* Light yellow color */
     border-radius: 8px;
     position: relative;
     margin-bottom: 10px;
@@ -378,15 +378,15 @@ body {
     left: 0;
     right: 0;
     height: 20px;
-    background-color: #fdcb6e; /* Color amarillo más oscuro para la pestaña */
+    background-color: #fdcb6e; /* Darker yellow color for the tab */
     border-radius: 8px 8px 0 0;
 }
 
 .file-icon.folder-icon i {
-    display: none; /* Ocultar el icono Font Awesome */
+    display: none; /* Hide Font Awesome icon */
 }
 
-/* Estilo para documentos */
+/* Style for documents */
 .file-icon.doc-icon {
     width: 100px;
     height: 70px;
@@ -418,11 +418,11 @@ body {
     border-radius: 2px;
 }
 
-/* Estilo para imágenes */
+/* Style for images */
 .file-icon.image-icon {
     width: 100px;
     height: 70px;
-    background-color: #74b9ff; /* Fondo azul claro */
+    background-color: #74b9ff; /* Light blue background */
     border-radius: 4px;
     position: relative;
     margin-bottom: 10px;
@@ -436,15 +436,15 @@ body {
     left: 15px;
     width: 20px;
     height: 20px;
-    background-color: #ffda79; /* Círculo amarillo como un sol */
+    background-color: #ffda79; /* Yellow circle like a sun */
     border-radius: 50%;
 }
 
-/* Estilo para videos */
+/* Style for videos */
 .file-icon.video-icon {
     width: 100px;
     height: 70px;
-    background-color: #111; /* Fondo negro */
+    background-color: #111; /* Black background */
     border-radius: 4px;
     position: relative;
     margin-bottom: 10px;
@@ -459,10 +459,10 @@ body {
     height: 0;
     border-top: 15px solid transparent;
     border-bottom: 15px solid transparent;
-    border-left: 20px solid white; /* Triángulo de reproducción */
+    border-left: 20px solid white; /* Play triangle */
 }
 
-/* Estilos para archivos de código */
+/* Styles for code files */
 .file-icon.code-icon {
     width: 100px;
     height: 70px;
@@ -470,11 +470,11 @@ body {
     border-radius: 4px;
     position: relative;
     margin-bottom: 10px;
-    border-top: 3px solid #556ee6; /* Borde superior azul */
+    border-top: 3px solid #556ee6; /* Blue top border */
     overflow: hidden;
 }
 
-/* Líneas que simulan código */
+/* Lines that simulate code */
 .file-icon.code-icon::before,
 .file-icon.code-icon::after {
     content: "";
@@ -482,7 +482,7 @@ body {
     left: 10px;
     right: 10px;
     height: 2px;
-    background-color: #556ee6; /* Color azul para el código */
+    background-color: #556ee6; /* Blue color for code */
 }
 
 .file-icon.code-icon::before {
@@ -495,14 +495,14 @@ body {
     width: 60%;
 }
 
-/* Agregar líneas adicionales para simular código */
+/* Add additional lines to simulate code */
 .file-icon.code-icon .code-line-1,
 .file-icon.code-icon .code-line-2,
 .file-icon.code-icon .code-line-3 {
     position: absolute;
     left: 10px;
     height: 2px;
-    background-color: #a0aec0; /* Color gris para el código */
+    background-color: #a0aec0; /* Gray color for code */
 }
 
 .file-icon.code-icon .code-line-1 {
@@ -520,9 +520,9 @@ body {
     width: 50%;
 }
 
-/* Colores específicos para distintos tipos de archivo de código */
+/* Specific colors for different code file types */
 .file-icon.json-icon {
-    border-top-color: #ffb86c; /* Naranja para JSON */
+    border-top-color: #ffb86c; /* Orange for JSON */
 }
 
 .file-icon.json-icon::before,
@@ -531,7 +531,7 @@ body {
 }
 
 .file-icon.js-icon {
-    border-top-color: #ffd43b; /* Amarillo para JavaScript */
+    border-top-color: #ffd43b; /* Yellow for JavaScript */
 }
 
 .file-icon.js-icon::before,
@@ -540,7 +540,7 @@ body {
 }
 
 .file-icon.html-icon {
-    border-top-color: #e34c26; /* Rojo para HTML */
+    border-top-color: #e34c26; /* Red for HTML */
 }
 
 .file-icon.html-icon::before,
@@ -549,7 +549,7 @@ body {
 }
 
 .file-icon.css-icon {
-    border-top-color: #2965f1; /* Azul para CSS */
+    border-top-color: #2965f1; /* Blue for CSS */
 }
 
 .file-icon.css-icon::before,
@@ -558,7 +558,7 @@ body {
 }
 
 .file-icon.py-icon {
-    border-top-color: #3776ab; /* Azul oscuro para Python */
+    border-top-color: #3776ab; /* Dark blue for Python */
 }
 
 .file-icon.py-icon::before,
@@ -1570,7 +1570,7 @@ header {
     color: #ffc107;
 }
 
-/* Estilos para la papelera */
+/* Styles for trash */
 .trash-item {
     position: relative;
 }
@@ -1634,7 +1634,7 @@ header {
     grid-column: 1 / -1;
 }
 
-/* Botón de peligro para vaciar papelera */
+/* Danger button for emptying trash */
 .btn-danger {
     background-color: #f44336;
     color: white;

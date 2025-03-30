@@ -19,23 +19,23 @@ use bytes::Bytes;
 #[derive(Debug, Error)]
 pub enum FileServiceError {
     /// Returned when a requested file cannot be found
-    #[error("Archivo no encontrado: {0}")]
+    #[error("File not found: {0}")]
     NotFound(String),
     
     /// Returned when a file operation conflicts with existing files
-    #[error("Archivo ya existe: {0}")]
+    #[error("File already exists: {0}")]
     Conflict(String),
     
     /// Returned when file access fails due to permissions or I/O issues
-    #[error("Error de acceso al archivo: {0}")]
+    #[error("File access error: {0}")]
     AccessError(String),
     
     /// Returned when a file path is invalid
-    #[error("Ruta de archivo inválida: {0}")]
+    #[error("Invalid file path: {0}")]
     InvalidPath(String),
     
     /// Generic internal error for unexpected failures
-    #[error("Error interno: {0}")]
+    #[error("Internal error: {0}")]
     InternalError(String),
 }
 
@@ -52,7 +52,7 @@ impl From<FileRepositoryError> for FileServiceError {
             FileRepositoryError::AlreadyExists(path) => FileServiceError::Conflict(path),
             FileRepositoryError::InvalidPath(path) => FileServiceError::InvalidPath(path),
             FileRepositoryError::IoError(e) => FileServiceError::AccessError(e.to_string()),
-            FileRepositoryError::Timeout(msg) => FileServiceError::AccessError(format!("Operación expiró: {}", msg)),
+            FileRepositoryError::Timeout(msg) => FileServiceError::AccessError(format!("Operation timed out: {}", msg)),
             _ => FileServiceError::InternalError(err.to_string()),
         }
     }
@@ -213,16 +213,16 @@ impl FileService {
     
     /// Moves a file to a new folder using filesystem operations directly
     pub async fn move_file(&self, file_id: &str, folder_id: Option<String>) -> FileServiceResult<FileDto> {
-        tracing::info!("Moviendo archivo con ID: {} a carpeta: {:?}", file_id, folder_id);
+        tracing::info!("Moving file with ID: {} to folder: {:?}", file_id, folder_id);
         
-        // Usar la implementación eficiente del repositorio que utiliza rename
+        // Use the efficient repository implementation that uses rename
         let moved_file = self.file_repository.move_file(file_id, folder_id).await
             .map_err(|e| {
-                tracing::error!("Error al mover archivo (ID: {}): {}", file_id, e);
+                tracing::error!("Error moving file (ID: {}): {}", file_id, e);
                 FileServiceError::from(e)
             })?;
         
-        tracing::info!("Archivo movido exitosamente: {} (ID: {}) a carpeta: {:?}", 
+        tracing::info!("File moved successfully: {} (ID: {}) to folder: {:?}", 
                        moved_file.name(), moved_file.id(), moved_file.folder_id());
         
         Ok(FileDto::from(moved_file))

@@ -3,9 +3,6 @@ name = "oxicloud"
 version = "0.1.0"
 edition = "2021"
 
-[[bench]]
-name = "file_operations"
-harness = true
 
 [dependencies]
 axum = { version = "0.8.1", features = ["multipart", "http1", "tokio", "macros"] }

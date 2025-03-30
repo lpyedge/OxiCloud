@@ -6,18 +6,18 @@ use crate::application::ports::file_ports::FileManagementUseCase;
 use crate::application::ports::storage_ports::FileWritePort;
 use crate::common::errors::DomainError;
 
-/// Servicio para operaciones de gestión de archivos
+/// Service for file management operations
 pub struct FileManagementService {
     file_repository: Arc<dyn FileWritePort>,
 }
 
 impl FileManagementService {
-    /// Crea un nuevo servicio de gestión de archivos
+    /// Creates a new file management service
     pub fn new(file_repository: Arc<dyn FileWritePort>) -> Self {
         Self { file_repository }
     }
     
-    /// Crea un stub para pruebas
+    /// Creates a stub for testing
     pub fn default_stub() -> Self {
         Self {
             file_repository: Arc::new(crate::infrastructure::repositories::FileFsWriteRepository::default_stub())
@@ -28,15 +28,15 @@ impl FileManagementService {
 #[async_trait]
 impl FileManagementUseCase for FileManagementService {
     async fn move_file(&self, file_id: &str, folder_id: Option<String>) -> Result<FileDto, DomainError> {
-        tracing::info!("Moviendo archivo con ID: {} a carpeta: {:?}", file_id, folder_id);
+        tracing::info!("Moving file with ID: {} to folder: {:?}", file_id, folder_id);
         
         let moved_file = self.file_repository.move_file(file_id, folder_id).await
             .map_err(|e| {
-                tracing::error!("Error al mover archivo (ID: {}): {}", file_id, e);
+                tracing::error!("Error moving file (ID: {}): {}", file_id, e);
                 e
             })?;
         
-        tracing::info!("Archivo movido exitosamente: {} (ID: {}) a carpeta: {:?}", 
+        tracing::info!("File moved successfully: {} (ID: {}) to folder: {:?}", 
                        moved_file.name(), moved_file.id(), moved_file.folder_id());
         
         Ok(FileDto::from(moved_file))

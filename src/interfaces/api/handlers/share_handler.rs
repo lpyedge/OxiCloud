@@ -14,7 +14,7 @@ use crate::{
         dtos::share_dto::{CreateShareDto, UpdateShareDto}, 
         ports::share_ports::ShareUseCase
     },
-    common::errors::{DomainError, ErrorKind},
+    common::errors::ErrorKind,
 };
 
 #[derive(Debug, Deserialize)]

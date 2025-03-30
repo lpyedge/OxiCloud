@@ -7,7 +7,7 @@ use crate::{
     application::{
         dtos::{
             pagination::PaginatedResponseDto,
-            share_dto::{CreateShareDto, ShareDto, SharePermissionsDto, UpdateShareDto},
+            share_dto::{CreateShareDto, ShareDto, UpdateShareDto},
         },
         ports::{
             outbound::{FileStoragePort, FolderStoragePort},

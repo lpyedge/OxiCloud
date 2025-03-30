@@ -45,8 +45,8 @@ use crate::infrastructure::repositories::parallel_file_processor::ParallelFilePr
  * filesystem-specific details.
  */
 
-// Usar constantes de la configuración centralizada en lugar de valores fijos
-// Esto se reemplaza con self.config.concurrency.max_concurrent_files más adelante
+// Use constants from centralized configuration instead of fixed values
+// This is replaced with self.config.concurrency.max_concurrent_files later
 
 /// Filesystem implementation of the FileRepository interface
 pub struct FileFsRepository {
@@ -130,16 +130,16 @@ impl FileFsRepository {
     async fn file_exists_at_storage_path(&self, storage_path: &StoragePath) -> FileRepositoryResult<bool> {
         let abs_path = self.resolve_storage_path(storage_path);
         
-        // Intentar obtener del caché avanzado primero
+        // Try to get from advanced cache first
         if let Some(is_file) = self.metadata_cache.is_file(&abs_path).await {
             tracing::debug!("Metadata cache hit for existence check: {} - path: {}", is_file, abs_path.display());
             return Ok(is_file);
         }
         
-        // Si no está en caché, verificar directamente y actualizar caché
+        // If not in cache, verify directly and update cache
         tracing::debug!("Metadata cache miss for existence check: {}", abs_path.display());
         
-        // Utilizar timeout para evitar bloqueo
+        // Use timeout to avoid blocking
         match time::timeout(
             self.config.timeouts.file_timeout(),
             fs::metadata(&abs_path)
@@ -147,7 +147,7 @@ impl FileFsRepository {
             Ok(Ok(metadata)) => {
                 let is_file = metadata.is_file();
                 
-                // Actualizar la caché con información fresca
+                // Update cache with fresh information
                 if let Err(e) = self.metadata_cache.refresh_metadata(&abs_path).await {
                     tracing::warn!("Failed to update cache for {}: {}", abs_path.display(), e);
                 }
@@ -163,7 +163,7 @@ impl FileFsRepository {
             Ok(Err(e)) => {
                 tracing::warn!("File check failed: {} - {}", abs_path.display(), e);
                 
-                // Añadir a caché como no existente
+                // Add to cache as non-existent
                 let entry_type = CacheEntryType::Unknown;
                 let file_metadata = crate::infrastructure::services::file_metadata_cache::FileMetadata::new(
                     abs_path.clone(),
@@ -191,13 +191,13 @@ impl FileFsRepository {
     pub async fn file_exists(&self, path: &std::path::Path) -> FileRepositoryResult<bool> {
         let abs_path = self.resolve_legacy_path(path);
         
-        // Intentar obtener del caché avanzado primero
+        // Try to get from advanced cache first
         if let Some(is_file) = self.metadata_cache.is_file(&abs_path).await {
             tracing::debug!("Metadata cache hit for legacy existence check: {} - path: {}", is_file, abs_path.display());
             return Ok(is_file);
         }
         
-        // Si no está en caché, verificar directamente
+        // If not in cache, verify directly
         tracing::info!("Checking if file exists: {} - path: {}", abs_path.exists(), abs_path.display());
         
         match time::timeout(
@@ -207,7 +207,7 @@ impl FileFsRepository {
             Ok(Ok(metadata)) => {
                 let is_file = metadata.is_file();
                 
-                // Actualizar la caché con información fresca
+                // Update cache with fresh information
                 if let Err(e) = self.metadata_cache.refresh_metadata(&abs_path).await {
                     tracing::warn!("Failed to update cache for {}: {}", abs_path.display(), e);
                 }
@@ -271,7 +271,7 @@ impl FileFsRepository {
     
     /// Extracts file metadata from a physical path with timeout and cache
     async fn get_file_metadata(&self, abs_path: &PathBuf) -> FileRepositoryResult<(u64, u64, u64)> {
-        // Intentar obtener de caché primero
+        // Try to get from cache first
         if let Some(cached_metadata) = self.metadata_cache.get_metadata(abs_path).await {
             if let (Some(size), Some(created_at), Some(modified_at)) = 
                 (cached_metadata.size, cached_metadata.created_at, cached_metadata.modified_at) {
@@ -280,7 +280,7 @@ impl FileFsRepository {
             }
         }
         
-        // Si no está en caché o metadatos incompletos, cargar desde sistema de archivos
+        // If not in cache or incomplete metadata, load from filesystem
         let metadata = match time::timeout(
             self.config.timeouts.file_timeout(),
             fs::metadata(&abs_path)
@@ -304,7 +304,7 @@ impl FileFsRepository {
             .map(|time| time.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
             .unwrap_or_else(|_| 0);
         
-        // Actualizar caché si es posible
+        // Update cache if possible
         if let Err(e) = self.metadata_cache.refresh_metadata(abs_path).await {
             tracing::warn!("Failed to update metadata cache for {}: {}", abs_path.display(), e);
         }
@@ -340,7 +340,7 @@ impl FileFsRepository {
         .map_err(|_| FileRepositoryError::Timeout(format!("Timeout checking file size: {}", abs_path.display())))?
         .map_err(FileRepositoryError::IoError)?;
             
-        // Utiliza el método del ResourceConfig para determinar si es un archivo grande
+        // Use the ResourceConfig method to determine if it's a large file
         Ok(self.config.resources.is_large_file(metadata.len()))
     }
     
@@ -395,7 +395,7 @@ impl FileRepositoryError {
     }
 }
 
-// Los errores ya están definidos por la interfaz FileRepositoryError
+// Errors are already defined by the FileRepositoryError interface
 
 // Enable cloning for concurrent operations
 impl Clone for FileFsRepository {

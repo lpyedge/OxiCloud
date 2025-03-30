@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::domain::entities::share::{Share, ShareItemType, SharePermissions};
+use crate::domain::entities::share::{Share, SharePermissions};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShareDto {

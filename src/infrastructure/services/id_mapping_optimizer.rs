@@ -10,60 +10,60 @@ use crate::infrastructure::services::id_mapping_service::{IdMappingService, IdMa
 use crate::common::errors::DomainError;
 use crate::application::ports::outbound::IdMappingPort;
 
-/// Tamaño máximo de entradas en el caché
+/// Maximum number of entries in the cache
 const MAX_CACHE_SIZE: usize = 10_000;
 
-/// Tiempo de vida del caché (en segundos)
-const CACHE_TTL_SECONDS: u64 = 60 * 5; // 5 minutos
+/// Cache time-to-live (in seconds)
+const CACHE_TTL_SECONDS: u64 = 60 * 5; // 5 minutes
 
-/// Optimizador para operaciones masivas de mapeo de IDs
+/// Optimizer for batch ID mapping operations
 pub struct IdMappingOptimizer {
-    /// Servicio base de mapeo de IDs
+    /// Base ID mapping service
     base_service: Arc<IdMappingService>,
     
-    /// Caché de ID por ruta (path -> id)
+    /// Path to ID cache (path -> id)
     path_to_id_cache: RwLock<HashMap<String, (String, Instant)>>,
     
-    /// Caché de ruta por ID (id -> path)
+    /// ID to path cache (id -> path)
     id_to_path_cache: RwLock<HashMap<String, (String, Instant)>>,
     
-    /// Contador de hits
+    /// Hit counter
     stats: RwLock<OptimizerStats>,
     
-    /// Semáforo para limitar operaciones de batch
+    /// Semaphore to limit batch operations
     batch_limiter: Semaphore,
     
-    /// Cola de batch pendientes
+    /// Pending batch queue
     pending_batch: Mutex<BatchQueue>,
 }
 
-/// Estadísticas del optimizador
+/// Optimizer statistics
 #[derive(Debug, Default, Clone)]
 pub struct OptimizerStats {
-    /// Número total de consultas get_path_by_id
+    /// Total number of get_path_by_id queries
     pub path_by_id_queries: usize,
-    /// Número de hits en caché get_path_by_id
+    /// Number of cache hits for get_path_by_id
     pub path_by_id_hits: usize,
     
-    /// Número total de consultas get_or_create_id
+    /// Total number of get_or_create_id queries
     pub get_id_queries: usize,
-    /// Número de hits en caché get_or_create_id
+    /// Number of cache hits for get_or_create_id
     pub get_id_hits: usize,
     
-    /// Número de batch realizados
+    /// Number of batch operations performed
     pub batch_operations: usize,
-    /// Número total de IDs procesados en batch
+    /// Total number of IDs processed in batch
     pub batch_items_processed: usize,
     
-    /// Último momento de limpieza de caché
+    /// Last cache cleanup timestamp
     pub last_cleanup: Option<Instant>,
 }
 
-/// Cola para operaciones batch
+/// Queue for batch operations
 struct BatchQueue {
-    /// Rutas pendientes para obtener/crear ID
+    /// Pending paths to get/create ID
     path_to_id_requests: HashSet<String>,
-    /// IDs pendientes para obtener ruta
+    /// Pending IDs to get path
     id_to_path_requests: HashSet<String>,
 }
 
@@ -76,43 +76,43 @@ impl Default for BatchQueue {
     }
 }
 
-/// Resultado de una operación batch
+/// Result of a batch operation
 struct BatchResult {
-    /// Mapeo de ruta a ID
+    /// Path to ID mapping
     path_to_id: HashMap<String, String>,
-    /// Mapeo de ID a ruta
+    /// ID to path mapping
     id_to_path: HashMap<String, String>,
 }
 
 impl IdMappingOptimizer {
-    /// Crea un nuevo optimizador para el servicio de mapeo de IDs
+    /// Creates a new optimizer for the ID mapping service
     pub fn new(base_service: Arc<IdMappingService>) -> Self {
         Self {
             base_service,
             path_to_id_cache: RwLock::new(HashMap::with_capacity(1000)),
             id_to_path_cache: RwLock::new(HashMap::with_capacity(1000)),
             stats: RwLock::new(OptimizerStats::default()),
-            batch_limiter: Semaphore::new(2), // Limitar a 2 operaciones batch concurrentes
+            batch_limiter: Semaphore::new(2), // Limit to 2 concurrent batch operations
             pending_batch: Mutex::new(BatchQueue::default()),
         }
     }
     
-    /// Obtiene estadísticas del optimizador
+    /// Gets optimizer statistics
     pub async fn get_stats(&self) -> OptimizerStats {
         self.stats.read().await.clone()
     }
     
-    /// Limpia entradas expiradas del caché
+    /// Cleans expired cache entries
     pub async fn cleanup_cache(&self) {
         let now = Instant::now();
         let ttl = Duration::from_secs(CACHE_TTL_SECONDS);
         
-        // Limpiar caché path_to_id
+        // Clean path_to_id cache
         {
             let mut cache = self.path_to_id_cache.write().await;
             let initial_size = cache.len();
             
-            // Retener solo entradas no expiradas
+            // Retain only non-expired entries
             cache.retain(|_, (_, timestamp)| {
                 now.duration_since(*timestamp) < ttl
             });
@@ -123,12 +123,12 @@ impl IdMappingOptimizer {
             }
         }
         
-        // Limpiar caché id_to_path
+        // Clean id_to_path cache
         {
             let mut cache = self.id_to_path_cache.write().await;
             let initial_size = cache.len();
             
-            // Retener solo entradas no expiradas
+            // Retain only non-expired entries
             cache.retain(|_, (_, timestamp)| {
                 now.duration_since(*timestamp) < ttl
             });
@@ -139,14 +139,14 @@ impl IdMappingOptimizer {
             }
         }
         
-        // Actualizar estadísticas
+        // Update statistics
         {
             let mut stats = self.stats.write().await;
             stats.last_cleanup = Some(now);
         }
     }
     
-    /// Inicia tarea de limpieza periódica
+    /// Starts periodic cleanup task
     pub fn start_cleanup_task(optimizer: Arc<Self>) {
         tokio::spawn(async move {
             let cleanup_interval = Duration::from_secs(CACHE_TTL_SECONDS / 2);
@@ -155,7 +155,7 @@ impl IdMappingOptimizer {
                 tokio::time::sleep(cleanup_interval).await;
                 optimizer.cleanup_cache().await;
                 
-                // Loguear estadísticas periódicamente
+                // Log statistics periodically
                 let stats = optimizer.get_stats().await;
                 info!("ID Mapping Optimizer stats - Path queries: {}, hits: {} ({}%), ID queries: {}, hits: {} ({}%), Batch ops: {}, items: {}",
                     stats.path_by_id_queries,
@@ -171,11 +171,11 @@ impl IdMappingOptimizer {
         });
     }
     
-    /// Agrega una solicitud a la cola pendiente para procesamiento batch
+    /// Adds a request to the pending queue for batch processing
     async fn queue_path_to_id_request(&self, path: &StoragePath) -> Result<Option<String>, IdMappingError> {
         let path_str = path.to_string();
         
-        // Verificar primero en el caché
+        // Check first in the cache
         {
             let cache = self.path_to_id_cache.read().await;
             if let Some((id, _)) = cache.get(&path_str) {
@@ -204,7 +204,7 @@ impl IdMappingOptimizer {
         // Adquirir permiso para operación batch
         let _permit = self.batch_limiter.acquire().await.unwrap();
         
-        // Obtener las solicitudes pendientes
+        // Get pending requests
         let (path_requests, id_requests) = {
             let mut batch_queue = self.pending_batch.lock().await;
             
@@ -250,7 +250,7 @@ impl IdMappingOptimizer {
             }
         }
         
-        // Actualizar caché con los resultados del batch
+        // Update cache with batch results
         {
             let mut path_cache = self.path_to_id_cache.write().await;
             let mut id_cache = self.id_to_path_cache.write().await;
@@ -397,7 +397,7 @@ impl IdMappingPort for IdMappingOptimizer {
         {
             let cache = self.path_to_id_cache.read().await;
             if let Some((id, _)) = cache.get(&path_str) {
-                // Actualizar estadísticas
+                // Update statistics
                 {
                     let mut stats = self.stats.write().await;
                     stats.get_id_hits += 1;
@@ -407,7 +407,7 @@ impl IdMappingPort for IdMappingOptimizer {
             }
         }
         
-        // Si no está en caché, intentar agregar a cola de batch primero
+        // If not in cache, try adding to batch queue first
         let queued_result = self.queue_path_to_id_request(path).await?;
         if let Some(id) = queued_result {
             return Ok(id);
@@ -416,17 +416,17 @@ impl IdMappingPort for IdMappingOptimizer {
         // Trigger batch processing if enough items accumulated
         self.trigger_batch_if_needed(20).await?;
         
-        // Intentar obtener del servicio base
+        // Try to get from the base service
         let id = self.base_service.get_or_create_id(path).await?;
         
-        // Actualizar caché con el nuevo ID
+        // Update cache with the new ID
         {
             let mut path_cache = self.path_to_id_cache.write().await;
             let mut id_cache = self.id_to_path_cache.write().await;
             
             let now = Instant::now();
             
-            // Controlar tamaño del caché
+            // Control cache size
             if path_cache.len() >= MAX_CACHE_SIZE {
                 warn!("Path-to-ID cache size reached limit ({}), clearing oldest entries", MAX_CACHE_SIZE);
                 path_cache.clear();
@@ -451,11 +451,11 @@ impl IdMappingPort for IdMappingOptimizer {
             stats.path_by_id_queries += 1;
         }
         
-        // Verificar primero en el caché
+        // Check first in the cache
         {
             let cache = self.id_to_path_cache.read().await;
             if let Some((path_str, _)) = cache.get(id) {
-                // Actualizar estadísticas
+                // Update statistics
                 {
                     let mut stats = self.stats.write().await;
                     stats.path_by_id_hits += 1;
@@ -465,10 +465,10 @@ impl IdMappingPort for IdMappingOptimizer {
             }
         }
         
-        // Obtener del servicio base
+        // Get from the base service
         let path = self.base_service.get_path_by_id(id).await?;
         
-        // Actualizar caché
+        // Update cache
         {
             let mut id_cache = self.id_to_path_cache.write().await;
             let mut path_cache = self.path_to_id_cache.write().await;
@@ -476,7 +476,7 @@ impl IdMappingPort for IdMappingOptimizer {
             let now = Instant::now();
             let path_str = path.to_string();
             
-            // Controlar tamaño del caché
+            // Control cache size
             if id_cache.len() >= MAX_CACHE_SIZE {
                 warn!("ID-to-path cache size reached limit ({}), clearing oldest entries", MAX_CACHE_SIZE);
                 id_cache.clear();
