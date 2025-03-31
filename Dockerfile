@@ -1,21 +1,55 @@
-FROM alpine:3.21.3 AS builder
+# Stage 1: Cache dependencies
+FROM rust:1.85-alpine AS cacher
+WORKDIR /app
+RUN apk --no-cache update && \
+    apk --no-cache upgrade && \
+    apk add --no-cache musl-dev openssl-dev pkgconfig postgresql-dev
+COPY Cargo.toml Cargo.lock ./
+# Create a minimal project to download and cache dependencies
+RUN mkdir -p src && \
+    echo 'fn main() { println!("Dummy build for caching dependencies"); }' > src/main.rs && \
+    cargo build --release && \
+    rm -rf src target/release/deps/oxicloud*
 
-COPY . /Oxicloud
-WORKDIR /Oxicloud
-
-RUN apk update && \
-    apk upgrade && \
-    apk add cargo pkgconfig openssl-dev
-
+# Stage 2: Build the application
+FROM rust:1.85-alpine AS builder
+WORKDIR /app
+RUN apk --no-cache update && \
+    apk --no-cache upgrade && \
+    apk add --no-cache musl-dev openssl-dev pkgconfig postgresql-dev
+# Copy cached dependencies
+COPY --from=cacher /app/target target
+COPY --from=cacher /usr/local/cargo /usr/local/cargo
+# Copy ALL files needed for compilation, including static files
+COPY src src
+COPY static static
+COPY db db
+COPY Cargo.toml Cargo.lock ./
+# Build with all optimizations
 RUN cargo build --release
 
-# Segunda etapa
+# Stage 3: Create minimal final image
 FROM alpine:3.21.3
+# Install only necessary runtime dependencies and update packages
+RUN apk --no-cache update && \
+    apk --no-cache upgrade && \
+    apk add --no-cache libgcc openssl ca-certificates libpq tzdata
 
-COPY . /Oxicloud
-COPY --from=builder /Oxicloud/target/release/oxicloud /Oxicloud/
-COPY --from=builder /usr/lib/libgcc_s.so.1 /usr/lib/libgcc_s.so.1
+# Copy only the compiled binary
+COPY --from=builder /app/target/release/oxicloud /usr/local/bin/
 
-WORKDIR /Oxicloud
+# Copy static files and other resources needed at runtime
+COPY static /app/static
+COPY db /app/db
 
-CMD ["./oxicloud", "--release"]
+# Create storage directory with proper permissions
+RUN mkdir -p /app/storage && chmod 777 /app/storage
+
+# Set proper permissions
+RUN chmod +x /usr/local/bin/oxicloud
+
+# Set working directory
+WORKDIR /app
+
+# Run the application
+CMD ["oxicloud"]

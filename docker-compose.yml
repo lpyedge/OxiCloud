@@ -33,7 +33,9 @@ services:
     depends_on:
       - postgres
     environment:
-    - "OXICLOUD_DB_CONNECTION_STRING=postgres://postgres:postgres@postgres/oxicloud"
+      - "OXICLOUD_DB_CONNECTION_STRING=postgres://postgres:postgres@postgres/oxicloud"
+    volumes:
+      - storage_data:/app/storage
 
 networks:
   oxicloud:
@@ -41,3 +43,4 @@ networks:
 
 volumes:
   pg_data:
+  storage_data:
